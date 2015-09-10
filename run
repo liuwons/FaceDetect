@@ -1,0 +1,1 @@
+./face --debug --wframe --mode video --log log video/test.avi

@@ -1,0 +1,1 @@
+g++ main.cpp FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o -o face `pkg-config --libs opencv`
