@@ -6,13 +6,15 @@
 #include "MoveDetect.h"
 #include "SkinDetect.h"
 
+#include "Classifier.h"
+
 using std::vector;
 
 class FaceDetector
 {
     private:
         string cascade_path;
-        CascadeClassifier cascade;
+        MaskCascadeClassifier cascade;
 
         MoveDetector* md;
         SkinDetector* sd;

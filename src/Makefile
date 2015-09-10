@@ -1,5 +1,5 @@
-face: FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o main.cpp/
-	g++ main.cpp FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o -o face `pkg-config --libs opencv`
+face: FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o Classifier.o main.cpp/
+	g++ main.cpp FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o Classifier.o -o face `pkg-config --libs opencv`
 
 FaceDetect.o: FaceDetect.cpp FaceDetect.h /
 	g++ FaceDetect.cpp -c
@@ -16,7 +16,8 @@ tool.o: tool.cpp tool.h /
 config.o: config.h config.cpp /
 	g++ config.cpp -c
 
-
+Classifier.o: Classifier.h Classifier.cpp /
+	g++ Classifier.cpp -c
 
 clean: /
 	rm *.o face
