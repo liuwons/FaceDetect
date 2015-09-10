@@ -45,29 +45,32 @@ int main(int argc, char** argv)
         int fr_stop = 10;
         int fr_index = 0;
 
-        FaceDetector fd;
+        FaceDetector*  fd = 0;
 
         IplImage* frame = 0;
         while(frame = cvQueryFrame(capture))
         {
-            cout << "frame:" << fr_index << endl;
-            
+            if(!fd)
+            {
+                fd = new FaceDetector(frame->width, frame->height, atoi(param["fps"].data()), atoi(param["fbuf"].data()));
+            }
             IplImage* imgSmooth = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
-            cout << "smooth" << endl;
             cvSmooth(frame, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
             
             if(param["debug"] == "yes")
             {
                 char fname[256];
-                sprintf(fname, "smooth%d.jpg", fr_index);
+                sprintf(fname, "%s/smooth%d.jpg", param["log"].data(), fr_index);
                 cout << "save " << string(fname) << endl;
                 cvSaveImage(fname, imgSmooth);
             }
 
-            vector<CvRect> rects = fd.getCandidateRect(imgSmooth);
-            fd.detect(imgSmooth, cvRect(0, 0, 0, 0));
+            vector<CvRect> rects = fd->getCandidateRect(imgSmooth);
+            fd->detect(imgSmooth, cvRect(0, 0, 0, 0));
             
             fr_index ++;
+
+            cvReleaseImage(&imgSmooth);
         }
 
         cvReleaseCapture(&capture);
@@ -91,8 +94,8 @@ int main(int argc, char** argv)
             cvSaveImage("gray.bmp", imgGray);*/
         }
 
-        FaceDetector fd;
-        vector<CvRect> rects = fd.getCandidateRect(imgSmooth);
+        /*FaceDetector fd;
+        vector<CvRect> rects = fd.getCandidateRect(imgSmooth);*/
 
     }
 

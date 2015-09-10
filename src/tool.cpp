@@ -6,6 +6,8 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
     params["wframe"] = "no";
     params["debug"] = "no";
     params["log"] = ".";
+    params["fps"] = 10;
+    params["fbuf"] = 10;
 
     for(int i = 1; i < argc; i ++)
     {
@@ -37,6 +39,16 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
         else if(!strcmp(argv[i], "--log"))
         {
             params["log"] = argv[i+1];
+            i++;
+        }
+        else if(!strcmp(argv[i], "--fps"))
+        {
+            params["fps"] = argv[i+1];
+            i++;
+        }
+        else if(!strcmp(argv[i], "--fbuf"))
+        {
+            params["fbuf"] = argv[i+1];
             i++;
         }
         else

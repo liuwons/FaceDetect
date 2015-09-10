@@ -14,26 +14,41 @@ using namespace cv;
 
 using namespace std;
 
-const string FaceDetector::cascade_path = "haarcascade_frontalface_alt.xml";
+const string FaceDetector::DEFAULT_CASCADE_PATH = "haarcascade_frontalface_alt.xml";
 const int FaceDetector::MIN_SIZE = 10;
 
-FaceDetector::FaceDetector()
+FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
 {
-    imgMask = 0;
-    imgGray = 0;
+    width = w;
+    height = h;
+    fps = fp;
+    imgBufLen = fb;
+
+    imgBuf = new IplImage*[imgBufLen];
+    for(int i = 0; i < imgBufLen; i ++)
+    {
+        imgBuf[i] = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+    }
+
+    imgMask = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+    imgGray = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+    imgBack = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+
+    md = new BackgroundDiffMoveDetector(width, height, fp, fb);
+    sd = new SkinDetector(width, height);
+    
     index = 0;
 
-    cascade_loaded = false;
-
-    if(cascade.load(cascade_path))
-    {
-        cascade_loaded = true;
-    }
+    if(cp)
+        cascade_path = cp;
     else
-    {
-        cerr << "load cascade failed" << endl;
-    }
+        cascade_path = DEFAULT_CASCADE_PATH;
+    assert(cascade.load(cascade_path));
+
+    sd = new SkinDetector(w, h);
+    md = new BackgroundDiffMoveDetector(w, h, fp, fb);
 }
+
 
 vector<Rect> FaceDetector::detect(const IplImage* img, CvRect rect)
 {
@@ -43,85 +58,62 @@ vector<Rect> FaceDetector::detect(const IplImage* img, CvRect rect)
     
     cascade.detectMultiScale(Mat(img), faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
-    cout << "FaceDetector::detect, elapse: " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
+    clock_t finish = clock();
 
-
-    cout << "face count:" << faces.size() << endl;
+    if(param["debug"] == "yes")
+    {
+        cout << "FaceDetector::detect cost time: " << difftime(finish, start)/CLOCKS_PER_SEC << " secs" << endl;
+        cout << "face count:" << faces.size() << endl;
+    }
 
     return faces;
 }
 
 vector<CvRect> FaceDetector::getCandidateRect(const IplImage* img)
 {
+    assert(img->width == width && img->height == height);
+
     clock_t start, finish;
-
-    start = clock();
-
-    if(imgMask && (imgMask->width != img->width || imgMask->height != img->height))
-    {
-        cvReleaseImage(&imgMask);
-        imgMask = 0;
-        index = 0;
-    }
-    
-    if(imgGray && (imgGray->width != img->width || imgGray->height != img->height))
-    {
-        cvReleaseImage(&imgGray);
-        imgGray = 0;
-        index = 0;
-    }
-
-    if(!imgMask)
-        imgMask = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1);
-    if(!imgGray)
-        imgGray = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1);
-
     if(param["debug"] == "yes")
-        cout << "convert color" << endl;
+    {
+        start = clock();
+    }
+
     cvCvtColor(img, imgGray, CV_BGR2GRAY);
 
-    cout << "elapse:" << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
-
-    if(param["debug"] == "yes")
-        cout << "move detect" << endl;
-    IplImage* imgMaskMove = md.detect(imgGray);
+    const IplImage* imgMaskMove = md->detect(imgGray);
     
-    cout << "elapse:" << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
-    
-    if(param["debug"] == "yes")
-        cout << "skin detect" << endl;
-    IplImage* imgMaskSkin = sd.detect(img);
+    const IplImage* imgMaskSkin = sd->detect(img);
 
-    cout << "elapse:" << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
-
-    cvOr(imgMaskMove, imgMaskSkin, imgMask);
+    cvAnd(imgMaskMove, imgMaskSkin, imgMask);
 
     vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
     
-    finish = clock();
-    double dura = difftime(finish, start);
-    cout << "FaceDetector::getCandidateRect, time elapse:" << dura/CLOCKS_PER_SEC << endl;
-    
+    if(param["debug"] == "yes")
+    {
+        finish = clock();
+        double dura = difftime(finish, start);
+        cout << "FaceDetector::getCandidateRect cost time:" << dura/CLOCKS_PER_SEC << " secs" << endl;
+    }
+
     if(param["debug"] == "yes")
     {
         char fname[256];
         
-        sprintf(fname, "mask_move%d.bmp", index);
+        sprintf(fname, "%s/mask_move%d.bmp", param["log"].data(), index);
         cout << "save mask_move.bmp" << endl;
         cvSaveImage(fname, imgMaskMove);
         
-        sprintf(fname, "mask_skin%d.bmp", index);
+        sprintf(fname, "%s/mask_skin%d.bmp", param["log"].data(), index);
         cout << "save mask_skin.bmp" << endl;
         cvSaveImage(fname, imgMaskSkin);
         
-        sprintf(fname, "mask%d.bmp", index);
+        sprintf(fname, "%s/mask%d.bmp", param["log"].data(), index);
         cout << "save mask.bmp" << endl;
         cvSaveImage(fname, imgMask);
     }
 
-
     index ++;
-
 
     return rects;
 }

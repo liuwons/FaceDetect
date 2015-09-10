@@ -7,84 +7,27 @@
 
 using namespace std;
 
-SkinDetector::SkinDetector() 
+SkinDetector::SkinDetector(int w, int h) 
 {
-    dst_img = 0;
-    
-    imgHSV = 0;
-    imgHue = 0;
-    imgSat = 0;
-    imgGra = 0;
+    width = w;
+    height = h;
+    index = 0;
+
+    dst_img = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+    imgHSV = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3); //HSV image
+    imgHue = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1); //color
+    imgSat = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1); //saturation
+    imgGra = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1); //gray
 }
 
 IplImage* SkinDetector::detect(const IplImage* img)
 {
+    assert(img->width == width && img->height == height);
+
     clock_t start = clock();
 
-    if(dst_img && (dst_img->width != img->width && dst_img->height != img->height))
-    {
-        cvReleaseImage(&dst_img);
-        dst_img = 0;
-    }
-    if(imgHSV && (imgHSV->width != img->width && imgHSV->height != img->height))
-    {
-        cvReleaseImage(&imgHSV);
-        imgHSV = 0;
-    }
-    if(imgHue && (imgHue->width != img->width && imgHue->height != img->height))
-    {
-        cvReleaseImage(&imgHue);
-        imgHue = 0;
-    }
-    if(imgSat && (imgSat->width != img->width && imgSat->height != img->height))
-    {
-        cvReleaseImage(&imgSat);
-        imgSat = 0;
-    }
-    if(imgGra && (imgGra->width != img->width && imgGra->height != img->height))
-    {
-        cvReleaseImage(&imgGra);
-        imgGra = 0;
-    }
-
-
-    if(!dst_img)
-    {
-        if(param["debug"] == "yes")
-            cout << "SkinDetector:create dst_img" << endl;
-        dst_img = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1);
-    }
-    if(!imgHSV)
-    {
-        if(param["debug"] == "yes")
-            cout << "SkinDetector:create imgHSV" << endl;
-        imgHSV = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 3); //HSV image
-    }
-    if(!imgHue)
-    {
-        if(param["debug"] == "yes")
-            cout << "SkinDetector:create imgHue" << endl;
-        imgHue = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1); //color
-    }
-    if(!imgSat)
-    {
-        if(param["debug"] == "yes")
-            cout << "SkinDetector:create imgSat" << endl;
-        imgSat = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1); //saturation
-    }
-    if(!imgGra)
-    {
-        if(param["debug"] == "yes")
-            cout << "SkinDetector:create imgGra" << endl;
-        imgGra = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1); //gray
-    }
-
-    cout << "SkinDetector: elapse " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
-
     cvCvtColor(img, imgHSV, CV_BGR2HSV);
-    cout << "SkinDetector: cvtColor, elapse " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
     cvSplit(imgHSV, imgHue, imgSat, imgGra, 0);
-    cout << "SkinDetector: splited, elapse " << (double)(clock()-start)/CLOCKS_PER_SEC << endl;
 
     unsigned char* pDst = (unsigned char*)dst_img->imageData;
     unsigned char* pHue = (unsigned char*)imgHue->imageData;
@@ -108,8 +51,5 @@ IplImage* SkinDetector::detect(const IplImage* img)
         pGra += imgGra->widthStep;
     }
     
-    /*cvSaveImage("dst.jpg", dst_img);
-    cvSaveImage("hue.jpg", imgHue);
-    cvSaveImage("gra.jpg", imgGra)*/;
     return dst_img;
 }

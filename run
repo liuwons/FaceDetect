@@ -1,1 +1,1 @@
-./face --debug --wframe --mode video --log log video/test.avi
+./face --debug --wframe --mode video --log log video/ctest.avi --fps 25 --fbuf 10
