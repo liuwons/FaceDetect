@@ -50,7 +50,7 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
 }
 
 
-vector<Rect> FaceDetector::detect(const IplImage* img, CvRect rect)
+vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
 {
     clock_t start = clock();
 
@@ -69,7 +69,7 @@ vector<Rect> FaceDetector::detect(const IplImage* img, CvRect rect)
     return faces;
 }
 
-vector<CvRect> FaceDetector::getCandidateRect(const IplImage* img)
+IplImage* FaceDetector::getMask(const IplImage* img)
 {
     assert(img->width == width && img->height == height);
 
@@ -87,7 +87,7 @@ vector<CvRect> FaceDetector::getCandidateRect(const IplImage* img)
 
     cvAnd(imgMaskMove, imgMaskSkin, imgMask);
 
-    vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
+    //vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
     
     if(param["debug"] == "yes")
     {
@@ -115,9 +115,10 @@ vector<CvRect> FaceDetector::getCandidateRect(const IplImage* img)
 
     index ++;
 
-    return rects;
+    return imgMask;
 }
 
+/*
 vector<CvRect> regionAnalyze(IplImage* imgMask, int min_size)
 {
     vector<CvRect> res;
@@ -179,4 +180,4 @@ vector<CvRect> regionAnalyze(IplImage* imgMask, int min_size)
     }
 
     return res;
-}
+}*/

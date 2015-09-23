@@ -22,6 +22,13 @@ class MaskCascadeClassifier : public CascadeClassifier
                                    Size maxSize=Size(),
                                    bool outputRejectLevels=false );
 
+    protected:
+        virtual bool detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
+                int stripSize, int yStep, double factor, vector<Rect>& candidates,
+                vector<int>& rejectLevels, vector<double>& levelWeights, bool outputRejectLevels=false);
+
+        friend class MaskCascadeClassifierInvoker;
+
 };
 
 #endif

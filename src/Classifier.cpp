@@ -2,6 +2,136 @@
 
 struct getRect { Rect operator ()(const CvAvgComp& e) const { return e.rect; } };
 
+
+class MaskCascadeClassifierInvoker : public ParallelLoopBody
+{
+public:
+    MaskCascadeClassifierInvoker( MaskCascadeClassifier& _cc, Size _sz1, int _stripSize, int _yStep, double _factor,
+        vector<Rect>& _vec, vector<int>& _levels, vector<double>& _weights, bool outputLevels, const Mat& _mask, Mutex* _mtx)
+    {
+        classifier = &_cc;
+        processingRectSize = _sz1;
+        stripSize = _stripSize;
+        yStep = _yStep;
+        scalingFactor = _factor;
+        rectangles = &_vec;
+        rejectLevels = outputLevels ? &_levels : 0;
+        levelWeights = outputLevels ? &_weights : 0;
+        mask = _mask;
+        mtx = _mtx;
+    }
+
+    void operator()(const Range& range) const
+    {
+        Ptr<FeatureEvaluator> evaluator = classifier->featureEvaluator->clone();
+
+        Size winSize(cvRound(classifier->data.origWinSize.width * scalingFactor), cvRound(classifier->data.origWinSize.height * scalingFactor));
+
+        int y1 = range.start * stripSize;
+        int y2 = min(range.end * stripSize, processingRectSize.height);
+        for( int y = y1; y < y2; y += yStep )
+        {
+            for( int x = 0; x < processingRectSize.width; x += yStep )
+            {
+                if ( (!mask.empty()) && (mask.at<uchar>(Point(x,y))==0)) {
+                    continue;
+                }
+
+                int origX = x * scalingFactor;
+                int origY = x * scalingFactor;
+                int origX2 = origX + winSize.width;
+                int origY2 = origY + winSize.height;
+
+                // add code here
+
+                double gypWeight;
+                int result = classifier->runAt(evaluator, Point(x, y), gypWeight);
+
+#if defined (LOG_CASCADE_STATISTIC)
+
+                logger.setPoint(Point(x, y), result);
+#endif
+                if( rejectLevels )
+                {
+                    if( result == 1 )
+                        result =  -(int)classifier->data.stages.size();
+                    if( classifier->data.stages.size() + result < 4 )
+                    {
+                        mtx->lock();
+                        rectangles->push_back(Rect(cvRound(x*scalingFactor), cvRound(y*scalingFactor), winSize.width, winSize.height));
+                        rejectLevels->push_back(-result);
+                        levelWeights->push_back(gypWeight);
+                        mtx->unlock();
+                    }
+                }
+                else if( result > 0 )
+                {
+                    mtx->lock();
+                    rectangles->push_back(Rect(cvRound(x*scalingFactor), cvRound(y*scalingFactor),
+                                               winSize.width, winSize.height));
+                    mtx->unlock();
+                }
+                if( result == 0 )
+                    x += yStep;
+            }
+        }
+    }
+
+    MaskCascadeClassifier* classifier;
+    vector<Rect>* rectangles;
+    Size processingRectSize;
+    int stripSize, yStep;
+    double scalingFactor;
+    vector<int> *rejectLevels;
+    vector<double> *levelWeights;
+    Mat mask;
+    Mutex* mtx;
+};
+
+
+
+bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
+                                           int stripSize, int yStep, double factor, vector<Rect>& candidates,
+                                           vector<int>& levels, vector<double>& weights, bool outputRejectLevels )
+{
+    if( !featureEvaluator->setImage( image, data.origWinSize ) )
+        return false;
+
+#if defined (LOG_CASCADE_STATISTIC)
+    logger.setImage(image);
+#endif
+
+    Mat currentMask;
+    if (!maskGenerator.empty()) {
+        currentMask=maskGenerator->generateMask(image);
+    }
+
+    vector<Rect> candidatesVector;
+    vector<int> rejectLevels;
+    vector<double> levelWeights;
+    Mutex mtx;
+    if( outputRejectLevels )
+    {
+        parallel_for_(Range(0, stripCount), MaskCascadeClassifierInvoker( *this, processingRectSize, stripSize, yStep, factor,
+            candidatesVector, rejectLevels, levelWeights, true, currentMask, &mtx));
+        levels.insert( levels.end(), rejectLevels.begin(), rejectLevels.end() );
+        weights.insert( weights.end(), levelWeights.begin(), levelWeights.end() );
+    }
+    else
+    {
+         parallel_for_(Range(0, stripCount), MaskCascadeClassifierInvoker( *this, processingRectSize, stripSize, yStep, factor,
+            candidatesVector, rejectLevels, levelWeights, false, currentMask, &mtx));
+    }
+    candidates.insert( candidates.end(), candidatesVector.begin(), candidatesVector.end() );
+
+#if defined (LOG_CASCADE_STATISTIC)
+    logger.write();
+#endif
+
+    return true;
+}
+
+
 void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& objects,
                                           double scaleFactor, int minNeighbors,
                                           int flags, Size minObjectSize, Size maxObjectSize)

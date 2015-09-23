@@ -65,8 +65,8 @@ int main(int argc, char** argv)
                 cvSaveImage(fname, imgSmooth);
             }
 
-            vector<CvRect> rects = fd->getCandidateRect(imgSmooth);
-            fd->detect(imgSmooth, cvRect(0, 0, 0, 0));
+            //vector<CvRect> rects = fd->getCandidateRect(imgSmooth);
+            //fd->detect(imgSmooth, cvRect(0, 0, 0, 0));
             
             fr_index ++;
 
