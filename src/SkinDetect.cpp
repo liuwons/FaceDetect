@@ -20,7 +20,7 @@ SkinDetector::SkinDetector(int w, int h)
     imgGra = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1); //gray
 }
 
-IplImage* SkinDetector::detect(const IplImage* img)
+IplImage* SkinDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);
 
@@ -39,7 +39,7 @@ IplImage* SkinDetector::detect(const IplImage* img)
             if (pHue[w] >= SKIN_HUE_LOWER_BOUND && pHue[w] <= SKIN_HUE_UPPER_BOUND &&
                     pGra[w] >= SKIN_GRAY_LOWER_BOUND && pGra[w] <= SKIN_GRAY_UPPER_BOUND)
             {
-                pDst[w] = 255;
+                pDst[w] = val;
             }
             else
             {

@@ -1,3 +1,5 @@
+CFLAG = -g
+
 face: FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o Classifier.o main.cpp/
 	g++ main.cpp FaceDetect.o SkinDetect.o MoveDetect.o tool.o config.o Classifier.o -o face `pkg-config --libs opencv`
 

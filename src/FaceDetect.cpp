@@ -47,16 +47,36 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
 
     sd = new SkinDetector(w, h);
     md = new BackgroundDiffMoveDetector(w, h, fp, fb);
+
+    ii = new IntImage(w, h);
 }
 
+vector<Rect> FaceDetector::detectAll(const IplImage* img)
+{
+    IplImage* mask = getMask(img);
+    return detect(img, mask);
+}
 
 vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
 {
     clock_t start = clock();
 
     vector<Rect> faces;
-    
-    cascade.detectMultiScale(Mat(img), faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30));
+   
+    /*if(param["debug"] == "yes")
+    {
+        cout << "calc integImage" << endl;
+    }*/
+
+    //IntImage* ii = new IntImage(mask);
+    ii->calcIntg(mask);
+
+    /*if(param["debug"] == "yes")
+    {
+        cout << "detectMultiScale" << endl;
+    }*/
+
+    cascade.detectMultiScale(Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30));
 
     clock_t finish = clock();
 
@@ -81,22 +101,23 @@ IplImage* FaceDetector::getMask(const IplImage* img)
 
     cvCvtColor(img, imgGray, CV_BGR2GRAY);
 
-    const IplImage* imgMaskMove = md->detect(imgGray);
+    const IplImage* imgMaskMove = md->detect(imgGray, 1);
     
-    const IplImage* imgMaskSkin = sd->detect(img);
+    const IplImage* imgMaskSkin = sd->detect(img, 1);
 
-    cvAnd(imgMaskMove, imgMaskSkin, imgMask);
+    //cvAnd(imgMaskMove, imgMaskSkin, imgMask);
+    cvOr(imgMaskMove, imgMaskSkin, imgMask);
 
     //vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
     
-    if(param["debug"] == "yes")
+    /*if(param["debug"] == "yes")
     {
         finish = clock();
         double dura = difftime(finish, start);
         cout << "FaceDetector::getCandidateRect cost time:" << dura/CLOCKS_PER_SEC << " secs" << endl;
-    }
+    }*/
 
-    if(param["debug"] == "yes")
+    /*if(param["debug"] == "yes")
     {
         char fname[256];
         
@@ -111,7 +132,7 @@ IplImage* FaceDetector::getMask(const IplImage* img)
         sprintf(fname, "%s/mask%d.bmp", param["log"].data(), index);
         cout << "save mask.bmp" << endl;
         cvSaveImage(fname, imgMask);
-    }
+    }*/
 
     index ++;
 

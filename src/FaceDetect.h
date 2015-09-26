@@ -29,6 +29,8 @@ class FaceDetector
         int imgBufLen;
         IplImage** imgBuf;
 
+        IntImage* ii;
+
         int width, height;
     public:
         const static string DEFAULT_CASCADE_PATH;// = "haarcascade_frontalface_alt.xml"; 
@@ -36,6 +38,7 @@ class FaceDetector
 
         FaceDetector(int w, int h, int fp, int fb, const char* cp = 0);
         vector<Rect> detect(const IplImage* img, const IplImage* mask);
+        vector<Rect> detectAll(const IplImage* img);
         IplImage* getMask(const IplImage* img);
 };
 

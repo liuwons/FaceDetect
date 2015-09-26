@@ -6,7 +6,7 @@
 class MoveDetector
 {
     public:
-        virtual const IplImage* detect(const IplImage* img) = 0;
+        virtual const IplImage* detect(const IplImage* img, int val) = 0;
 };
 
 class FrameDiffMoveDetector : public MoveDetector
@@ -25,7 +25,7 @@ class FrameDiffMoveDetector : public MoveDetector
          * The input image is 1 channel gray image.
          * The result is a mask image represents the region of movements.
          * */
-        const IplImage* detect(const IplImage* img);
+        const IplImage* detect(const IplImage* img, int val = 1);
 };
 
 enum BackgroundMethod
@@ -57,7 +57,7 @@ class BackgroundDiffMoveDetector : public MoveDetector
 
     public:
         BackgroundDiffMoveDetector(int w, int h, int fp, int fb, BackgroundMethod m = METHOD_MEDIUM);
-        const IplImage* detect(const IplImage* img);
+        const IplImage* detect(const IplImage* img, int val = 1);
 };
 
 #endif

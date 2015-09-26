@@ -22,18 +22,18 @@ FrameDiffMoveDetector::FrameDiffMoveDetector(int w, int h)
  * The input image is 1 channel gray image.
  * The result is a mask image represents the region of movements.
  * */
-const IplImage* FrameDiffMoveDetector::detect(const IplImage* img)
+const IplImage* FrameDiffMoveDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);
 
     if(0 == index)
     {
-        setImageVal(imgMask, 255);
+        setImageVal(imgMask, val);
     }
     else
     {
         cvAbsDiff(imgLast, img, imgTmp);
-        cvThreshold(imgTmp, imgMask, 10, 255, CV_THRESH_BINARY);
+        cvThreshold(imgTmp, imgMask, 10, val, CV_THRESH_BINARY);
     }
 
     cvCopy(img, imgLast);
@@ -93,7 +93,7 @@ int compare_uchar(const void* a, const void* b)
     return m > n ? 1 : -1;
 }
 
-const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img)
+const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);
 
@@ -137,6 +137,7 @@ const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img)
                 char fn[256];
                 sprintf(fn, "%s/background%d.bmp", param["log"].data(), bcur);
                 cvSaveImage(fn, imgBack);
+                printf("refresh background mask");
             }
             else
             {
@@ -147,7 +148,7 @@ const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img)
         index++;
 
         cvAbsDiff(imgBack, img, imgTmp);
-        cvThreshold(imgTmp, imgMask, 10, 255, CV_THRESH_BINARY);
+        cvThreshold(imgTmp, imgMask, 10, val, CV_THRESH_BINARY);
 
         return imgMask;
     }
@@ -191,7 +192,7 @@ const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img)
         index++;
 
         cvAbsDiff(imgBack, img, imgTmp);
-        cvThreshold(imgTmp, imgMask, 10, 255, CV_THRESH_BINARY);
+        cvThreshold(imgTmp, imgMask, 10, val, CV_THRESH_BINARY);
 
         return imgMask;
     }

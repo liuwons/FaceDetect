@@ -1,5 +1,8 @@
 #include "Classifier.h"
 
+#include <iostream>
+using namespace std;
+
 struct getRect { Rect operator ()(const CvAvgComp& e) const { return e.rect; } };
 
 
@@ -37,12 +40,23 @@ public:
                     continue;
                 }
 
+                const IntImage* intImg = classifier->intImg;
+                int width = intImg->width;
+                int height = intImg->height;
+
                 int origX = x * scalingFactor;
                 int origY = x * scalingFactor;
                 int origX2 = origX + winSize.width;
                 int origY2 = origY + winSize.height;
 
-                // add code here
+                int area = winSize.width * winSize.height;
+                int integ = intImg->data[origY2*width+origX2] 
+                    - intImg->data[origY*width+origX2] 
+                    - intImg->data[origY2*width+origX] 
+                    + intImg->data[origY*width+origX];
+                if(integ < area / 3)
+                    continue;
+
 
                 double gypWeight;
                 int result = classifier->runAt(evaluator, Point(x, y), gypWeight);
@@ -86,6 +100,7 @@ public:
     vector<double> *levelWeights;
     Mat mask;
     Mutex* mtx;
+
 };
 
 
@@ -132,14 +147,17 @@ bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount,
 }
 
 
-void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& objects,
+void MaskCascadeClassifier::detectMultiScale( const Mat& image, const IntImage* ii, vector<Rect>& objects,
                                           double scaleFactor, int minNeighbors,
                                           int flags, Size minObjectSize, Size maxObjectSize)
 {
+    //cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
+    intImg = ii;
     vector<int> fakeLevels;
     vector<double> fakeWeights;
     detectMultiScale( image, objects, fakeLevels, fakeWeights, scaleFactor,
         minNeighbors, flags, minObjectSize, maxObjectSize, false );
+    //cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
 }
 
 void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& objects,

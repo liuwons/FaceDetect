@@ -22,7 +22,7 @@ class SkinDetector
         const static unsigned char SKIN_HUE_LOWER_BOUND = 3;
         const static unsigned char SKIN_HUE_UPPER_BOUND = 33;
         SkinDetector(int w, int h);
-        IplImage* detect(const IplImage* img);
+        IplImage* detect(const IplImage* img, int val = 1);
 };
 
 #endif

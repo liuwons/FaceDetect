@@ -47,6 +47,8 @@ int main(int argc, char** argv)
 
         FaceDetector*  fd = 0;
 
+        cvNamedWindow("FaceDetect", CV_WINDOW_AUTOSIZE);
+
         IplImage* frame = 0;
         while(frame = cvQueryFrame(capture))
         {
@@ -65,8 +67,16 @@ int main(int argc, char** argv)
                 cvSaveImage(fname, imgSmooth);
             }
 
-            //vector<CvRect> rects = fd->getCandidateRect(imgSmooth);
-            //fd->detect(imgSmooth, cvRect(0, 0, 0, 0));
+            vector<Rect> faces = fd->detectAll(imgSmooth);
+            for(int k = 0; k < faces.size(); k ++)
+            {
+                Rect rect = faces[k];
+                cvRectangle(imgSmooth, 
+                        cvPoint(rect.x, rect.y), 
+                        cvPoint(rect.x + rect.width, rect.y + rect.height),
+                        cvScalar(255, 0, 0));
+            }
+            cvShowImage("FaceDetect", imgSmooth);
             
             fr_index ++;
 
