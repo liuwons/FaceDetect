@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FaceDetect", "FaceDetect\FaceDetect.vcxproj", "{4BB5D92F-C3E3-4F30-9F6F-A3CE2F505DE2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4BB5D92F-C3E3-4F30-9F6F-A3CE2F505DE2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4BB5D92F-C3E3-4F30-9F6F-A3CE2F505DE2}.Debug|Win32.Build.0 = Debug|Win32
+		{4BB5D92F-C3E3-4F30-9F6F-A3CE2F505DE2}.Release|Win32.ActiveCfg = Release|Win32
+		{4BB5D92F-C3E3-4F30-9F6F-A3CE2F505DE2}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

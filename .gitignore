@@ -33,3 +33,14 @@
 *.avi
 *.mkv
 *.log
+
+
+# Visual Studio
+*.sdf
+*.opensdf
+*.pdf
+*.exe
+*.user
+*.obj
+
+*~
