@@ -3,6 +3,8 @@
 #include <iostream>
 using namespace std;
 
+#include "config.h"
+
 struct getRect { Rect operator ()(const CvAvgComp& e) const { return e.rect; } };
 
 
@@ -40,22 +42,25 @@ public:
                     continue;
                 }
 
-                const IntImage* intImg = classifier->intImg;
-                int width = intImg->width;
-                int height = intImg->height;
+                if(opt)
+                {
+                    const IntImage* intImg = classifier->intImg;
+                    int width = intImg->width;
+                    int height = intImg->height;
 
-                int origX = x * scalingFactor;
-                int origY = x * scalingFactor;
-                int origX2 = origX + winSize.width;
-                int origY2 = origY + winSize.height;
+                    int origX = x * scalingFactor;
+                    int origY = x * scalingFactor;
+                    int origX2 = origX + winSize.width;
+                    int origY2 = origY + winSize.height;
 
-                int area = winSize.width * winSize.height;
-                int integ = intImg->data[origY2*width+origX2] 
-                    - intImg->data[origY*width+origX2] 
-                    - intImg->data[origY2*width+origX] 
-                    + intImg->data[origY*width+origX];
-                if(integ < area / 3)
-                    continue;
+                    int area = winSize.width * winSize.height;
+                    int integ = intImg->data[origY2*width+origX2] 
+                        - intImg->data[origY*width+origX2] 
+                        - intImg->data[origY2*width+origX] 
+                        + intImg->data[origY*width+origX];
+                    if(integ < area / opt_factor)
+                        continue;
+                }
 
 
                 double gypWeight;

@@ -67,14 +67,6 @@ int main(int argc, char** argv)
             IplImage* imgSmooth = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
             cvSmooth(frame, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
             
-            if(param["debug"] == "yes")
-            {
-                char fname[256];
-                sprintf(fname, "%s/smooth%d.jpg", param["log"].data(), fr_index);
-                cout << "save " << string(fname) << endl;
-                cvSaveImage(fname, imgSmooth);
-            }
-
             vector<Rect> faces = fd->detectAll(imgSmooth);
             for(int k = 0; k < faces.size(); k ++)
             {
@@ -89,7 +81,17 @@ int main(int argc, char** argv)
             
             fr_index ++;
 
+            if(param["debug"] == "yes")
+            {
+                char fname[256];
+                sprintf(fname, "%s/smooth%d.jpg", param["log"].data(), fr_index);
+                cout << "save " << string(fname) << endl;
+                cvSaveImage(fname, imgSmooth);
+            }
+
+
             cvReleaseImage(&imgSmooth);
+
         }
 
         cvReleaseCapture(&capture);

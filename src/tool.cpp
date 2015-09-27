@@ -1,4 +1,8 @@
 #include "tool.h"
+#include "config.h"
+
+#include <iostream>
+using namespace std;
 
 bool parse_param(int argc, char** argv, map<string, string>& params)
 {
@@ -6,8 +10,10 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
     params["wframe"] = "no";
     params["debug"] = "no";
     params["log"] = ".";
-    params["fps"] = 10;
-    params["fbuf"] = 10;
+    params["fps"] = "10";
+    params["fbuf"] = "10";
+    params["classfier"] = "normal";
+    params["opt_factor"] = "3";
 
     for(int i = 1; i < argc; i ++)
     {
@@ -49,6 +55,20 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
         else if(!strcmp(argv[i], "--fbuf"))
         {
             params["fbuf"] = argv[i+1];
+            i++;
+        }
+        else if(!strcmp(argv[i], "--classifier"))
+        {
+            params["classifier"] = argv[i+1];
+            if(!strcmp(argv[i+1], "opt"))
+                opt = true;
+            i++;
+        }
+        else if(!strcmp(argv[i], "--opt_factor"))
+        {
+            params["opt_factor"] = argv[i+1];
+            opt_factor = atoi(argv[i+1]);
+            cout << "opt_factor:" << opt_factor << endl;
             i++;
         }
         else
