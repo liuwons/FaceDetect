@@ -31,7 +31,15 @@ int main(int argc, char** argv)
 
     if(param["mode"] == MODE_VIDEO)
     {
-        CvCapture* capture = cvCaptureFromFile(param["file"].data());
+		CvCapture* capture = NULL;
+        if(param["file"] == "camera")
+        {
+            capture = cvCreateCameraCapture(0);
+        }
+        else
+        {
+            capture = cvCaptureFromFile(param["file"].data());
+        }
         if(!capture)
         {
             cerr << "Error: open video failed" << endl;
@@ -74,9 +82,10 @@ int main(int argc, char** argv)
                 cvRectangle(imgSmooth, 
                         cvPoint(rect.x, rect.y), 
                         cvPoint(rect.x + rect.width, rect.y + rect.height),
-                        cvScalar(255, 0, 0));
+                        cvScalar(0, 0, 255));
             }
             cvShowImage("FaceDetect", imgSmooth);
+			cvWaitKey(1);
             
             fr_index ++;
 

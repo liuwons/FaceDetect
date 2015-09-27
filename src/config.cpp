@@ -4,5 +4,5 @@
 using std::map;
 using std::string;
 
-map<string, int> param;
+map<string, string> param;
 string file_name;

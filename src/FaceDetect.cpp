@@ -14,7 +14,7 @@ using namespace cv;
 
 using namespace std;
 
-const string FaceDetector::DEFAULT_CASCADE_PATH = "haarcascade_frontalface_alt.xml";
+const string FaceDetector::DEFAULT_CASCADE_PATH = "./haarcascade_frontalface_alt.xml";
 const int FaceDetector::MIN_SIZE = 10;
 
 FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
@@ -105,8 +105,8 @@ IplImage* FaceDetector::getMask(const IplImage* img)
     
     const IplImage* imgMaskSkin = sd->detect(img, 1);
 
-    //cvAnd(imgMaskMove, imgMaskSkin, imgMask);
-    cvOr(imgMaskMove, imgMaskSkin, imgMask);
+    cvAnd(imgMaskMove, imgMaskSkin, imgMask);
+    //cvOr(imgMaskMove, imgMaskSkin, imgMask);
 
     //vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
     
