@@ -32,6 +32,12 @@ public:
 
         Size winSize(cvRound(classifier->data.origWinSize.width * scalingFactor), cvRound(classifier->data.origWinSize.height * scalingFactor));
 
+        const IntImage* intImg = classifier->intImg;
+        int area = winSize.width * winSize.height;
+        int width = intImg->width;
+        int height = intImg->height;
+        int thresh = area / opt_factor;
+
         int y1 = range.start * stripSize;
         int y2 = min(range.end * stripSize, processingRectSize.height);
         for( int y = y1; y < y2; y += yStep )
@@ -44,24 +50,18 @@ public:
 
                 if(opt)
                 {
-                    const IntImage* intImg = classifier->intImg;
-                    int width = intImg->width;
-                    int height = intImg->height;
-
                     int origX = x * scalingFactor;
                     int origY = x * scalingFactor;
                     int origX2 = origX + winSize.width;
                     int origY2 = origY + winSize.height;
 
-                    int area = winSize.width * winSize.height;
-                    int integ = intImg->data[origY2*width+origX2] 
-                        - intImg->data[origY*width+origX2] 
-                        - intImg->data[origY2*width+origX] 
+                    int integ = intImg->data[origY2*width+origX2]
+                        - intImg->data[origY*width+origX2]
+                        - intImg->data[origY2*width+origX]
                         + intImg->data[origY*width+origX];
-                    if(integ < area / opt_factor)
+                    if(integ < thresh)
                         continue;
                 }
-
 
                 double gypWeight;
                 int result = classifier->runAt(evaluator, Point(x, y), gypWeight);
@@ -108,6 +108,111 @@ public:
 
 };
 
+
+template<class FEval>
+inline int predictOrdered2( CascadeClassifier& cascade, Ptr<FeatureEvaluator> &_featureEvaluator, double& sum )
+{
+    int nstages = (int)cascade.data.stages.size();
+    int nodeOfs = 0, leafOfs = 0;
+    FEval& featureEvaluator = (FEval&)*_featureEvaluator;
+    float* cascadeLeaves = &cascade.data.leaves[0];
+    CascadeClassifier::Data::DTreeNode* cascadeNodes = &cascade.data.nodes[0];
+    CascadeClassifier::Data::DTree* cascadeWeaks = &cascade.data.classifiers[0];
+    CascadeClassifier::Data::Stage* cascadeStages = &cascade.data.stages[0];
+
+    for( int si = 0; si < nstages; si++ )
+    {
+        CascadeClassifier::Data::Stage& stage = cascadeStages[si];
+        int wi, ntrees = stage.ntrees;
+        sum = 0;
+
+        for( wi = 0; wi < ntrees; wi++ )
+        {
+            CascadeClassifier::Data::DTree& weak = cascadeWeaks[stage.first + wi];
+            int idx = 0, root = nodeOfs;
+
+            do
+            {
+                CascadeClassifier::Data::DTreeNode& node = cascadeNodes[root + idx];
+                double val = featureEvaluator(node.featureIdx);
+                idx = val < node.threshold ? node.left : node.right;
+            }
+            while( idx > 0 );
+            sum += cascadeLeaves[leafOfs - idx];
+            nodeOfs += weak.nodeCount;
+            leafOfs += weak.nodeCount + 1;
+        }
+        if( sum < stage.threshold )
+            return -si;
+    }
+    return 1;
+}
+
+
+template<class FEval>
+inline int predictOrderedStump2( CascadeClassifier& cascade, Ptr<FeatureEvaluator> &_featureEvaluator, double& sum )
+{
+    int nodeOfs = 0, leafOfs = 0;
+    FEval& featureEvaluator = (FEval&)*_featureEvaluator;
+    float* cascadeLeaves = &cascade.data.leaves[0];
+    CascadeClassifier::Data::DTreeNode* cascadeNodes = &cascade.data.nodes[0];
+    CascadeClassifier::Data::Stage* cascadeStages = &cascade.data.stages[0];
+
+    int nstages = (int)cascade.data.stages.size();
+    for( int stageIdx = 0; stageIdx < nstages; stageIdx++ )
+    {
+        CascadeClassifier::Data::Stage& stage = cascadeStages[stageIdx];
+        sum = 0.0;
+
+        int ntrees = stage.ntrees;
+        for( int i = 0; i < ntrees; i++, nodeOfs++, leafOfs+= 2 )
+        {
+            CascadeClassifier::Data::DTreeNode& node = cascadeNodes[nodeOfs];
+            double value = featureEvaluator(node.featureIdx);
+            sum += cascadeLeaves[ value < node.threshold ? leafOfs : leafOfs + 1 ];
+        }
+
+        if( sum < stage.threshold )
+            return -stageIdx;
+    }
+
+    return 1;
+}
+
+//optimize version, only resize detect windows in stead of resizing full image
+int CascadeClassifier::runAt2( Ptr<FeatureEvaluator>& evaluator, Point pt, double& weight )
+{
+    CV_Assert( oldCascade.empty() );
+
+    assert( data.featureType == FeatureEvaluator::HAAR ||
+            data.featureType == FeatureEvaluator::LBP ||
+            data.featureType == FeatureEvaluator::HOG );
+
+    if( !evaluator->setWindow(pt) )
+        return -1;
+    if( data.isStumpBased )
+    {
+        if( data.featureType == FeatureEvaluator::HAAR )
+            return predictOrderedStump<HaarEvaluator>( *this, evaluator, weight );
+        else if( data.featureType == FeatureEvaluator::LBP )
+            return predictCategoricalStump<LBPEvaluator>( *this, evaluator, weight );
+        else if( data.featureType == FeatureEvaluator::HOG )
+            return predictOrderedStump<HOGEvaluator>( *this, evaluator, weight );
+        else
+            return -2;
+    }
+    else
+    {
+        if( data.featureType == FeatureEvaluator::HAAR )
+            return predictOrdered<HaarEvaluator>( *this, evaluator, weight );
+        else if( data.featureType == FeatureEvaluator::LBP )
+            return predictCategorical<LBPEvaluator>( *this, evaluator, weight );
+        else if( data.featureType == FeatureEvaluator::HOG )
+            return predictOrdered<HOGEvaluator>( *this, evaluator, weight );
+        else
+            return -2;
+    }
+}
 
 
 bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
