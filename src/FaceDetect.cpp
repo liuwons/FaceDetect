@@ -14,7 +14,7 @@ using namespace cv;
 
 using namespace std;
 
-const string FaceDetector::DEFAULT_CASCADE_PATH = "./haarcascade_frontalface_alt.xml";
+const string FaceDetector::DEFAULT_CASCADE_PATH = "./cascade.xml";
 const int FaceDetector::MIN_SIZE = 10;
 
 FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
@@ -76,7 +76,7 @@ vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
         cout << "detectMultiScale" << endl;
     }*/
 
-    cascade.detectMultiScale(Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30));
+    cascade.detectMultiScale(Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(18, 18));
 
     clock_t finish = clock();
 
