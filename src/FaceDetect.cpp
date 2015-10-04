@@ -14,7 +14,7 @@ using namespace cv;
 
 using namespace std;
 
-const string FaceDetector::DEFAULT_CASCADE_PATH = "./cascade.xml";
+const string FaceDetector::DEFAULT_CASCADE_PATH = "cascade.xml";
 const int FaceDetector::MIN_SIZE = 10;
 
 FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
@@ -43,7 +43,10 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
         cascade_path = cp;
     else
         cascade_path = DEFAULT_CASCADE_PATH;
-    assert(cascade.load(cascade_path));
+	cout << "cascade path:" << cascade_path << endl;
+	bool loadr = cascade.load(cascade_path);
+	cout << "load cascade:" << loadr << endl;
+    assert(loadr);
 
     sd = new SkinDetector(w, h);
     md = new BackgroundDiffMoveDetector(w, h, fp, fb);
@@ -70,6 +73,7 @@ vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
 
     //IntImage* ii = new IntImage(mask);
     ii->calcIntg(mask);
+	cout << "got integral image" << endl;
 
     /*if(param["debug"] == "yes")
     {
@@ -102,8 +106,10 @@ IplImage* FaceDetector::getMask(const IplImage* img)
     cvCvtColor(img, imgGray, CV_BGR2GRAY);
 
     const IplImage* imgMaskMove = md->detect(imgGray, 1);
+	cout << "got move mask" << endl;
     
     const IplImage* imgMaskSkin = sd->detect(img, 1);
+	cout << "got skin mask" << endl;
 
     cvAnd(imgMaskMove, imgMaskSkin, imgMask);
     //cvOr(imgMaskMove, imgMaskSkin, imgMask);

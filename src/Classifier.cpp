@@ -50,10 +50,10 @@ public:
 
                 if(opt)
                 {
-                    int origX = x * scalingFactor;
-                    int origY = x * scalingFactor;
-                    int origX2 = origX + winSize.width;
-                    int origY2 = origY + winSize.height;
+                    int origX = min((int)(x * scalingFactor), width);
+                    int origY = min((int)(y * scalingFactor), height);
+                    int origX2 = min(origX + winSize.width, width);
+                    int origY2 = min(origY + winSize.height, height);
 
                     int integ = intImg->data[origY2*width+origX2]
                         - intImg->data[origY*width+origX2]
@@ -109,31 +109,21 @@ public:
 };
 
 
-bool MaskCascadeClassifier::detectSingleScale( Size winSize, const Mat& image, int stripCount, Size processingRectSize,
+bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
                                            int stripSize, int yStep, double factor, vector<Rect>& candidates,
                                            vector<int>& levels, vector<double>& weights, bool outputRejectLevels )
 {
-    cout << "detect single scale" << endl;
-    if (featureEvaluator->getFeatureType() == cv::FeatureEvaluator::HAAR)
-        cout << "is haar feature" << endl;
-
-    MHaarEvaluator* ev = (MHaarEvaluator*)(featureEvaluator.obj);
-    cout << "ev:" << ev << endl;
-    if( !ev->setWinSize( winSize ) )
+    if( !featureEvaluator->setImage( image, data.origWinSize ) )
         return false;
 
 #if defined (LOG_CASCADE_STATISTIC)
     logger.setImage(image);
 #endif
 
-    cout << "detect single scale 2" << endl;
-
     Mat currentMask;
     if (!maskGenerator.empty()) {
         currentMask=maskGenerator->generateMask(image);
     }
-
-    cout << "detect single scale 3" << endl;
 
     vector<Rect> candidatesVector;
     vector<int> rejectLevels;
@@ -157,8 +147,6 @@ bool MaskCascadeClassifier::detectSingleScale( Size winSize, const Mat& image, i
     logger.write();
 #endif
 
-    cout << "detect single scale 4" << endl;
-
     return true;
 }
 
@@ -167,13 +155,11 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, const IntImage* 
                                           double scaleFactor, int minNeighbors,
                                           int flags, Size minObjectSize, Size maxObjectSize)
 {
-    //cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
     intImg = ii;
     vector<int> fakeLevels;
     vector<double> fakeWeights;
     detectMultiScale( image, objects, fakeLevels, fakeWeights, scaleFactor,
         minNeighbors, flags, minObjectSize, maxObjectSize, false );
-    //cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
 }
 
 void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& objects,
@@ -183,11 +169,10 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
                                           int flags, Size minObjectSize, Size maxObjectSize,
                                           bool outputRejectLevels )
 {
-    cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
+    //cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
     const double GROUP_EPS = 0.2;
 
     CV_Assert( scaleFactor > 1 && image.depth() == CV_8U );
-
     if( empty() )
         return;
 
@@ -225,13 +210,6 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
     Mat imageBuffer(image.rows + 1, image.cols + 1, CV_8U);
     vector<Rect> candidates;
 
-    if( !featureEvaluator->setImage( grayImage, data.origWinSize ) )
-    {
-        cerr << "Error: set image for feature evaluator failed !" << endl;
-        return;
-    }
-
-
     for( double factor = 1; ; factor *= scaleFactor )
     {
         Size originalWindowSize = getOriginalWindowSize();
@@ -247,8 +225,8 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         if( windowSize.width < minObjectSize.width || windowSize.height < minObjectSize.height )
             continue;
 
-        //Mat scaledImage( scaledImageSize, CV_8U, imageBuffer.data );
-        //resize( grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
+        Mat scaledImage( scaledImageSize, CV_8U, imageBuffer.data );
+        resize( grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
 
         int yStep;
         if( getFeatureType() == cv::FeatureEvaluator::HOG )
@@ -267,7 +245,7 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         stripCount = std::min(std::max(stripCount, 1), 100);
         stripSize = (((processingRectSize.height + stripCount - 1)/stripCount + yStep-1)/yStep)*yStep;
 
-        if( !detectSingleScale( windowSize, grayImage, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
+        if( !detectSingleScale( scaledImage, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
             rejectLevels, levelWeights, outputRejectLevels ) )
             break;
     }
@@ -284,81 +262,5 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
     {
         groupRectangles( objects, minNeighbors, GROUP_EPS );
     }
-    cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
-}
-
-
-bool MHaarEvaluator::setImage( const Mat &image, Size _origWinSize )
-{
-    int rn = image.rows+1, cn = image.cols+1;
-    origWinSize = _origWinSize;
-
-    if (image.cols < origWinSize.width || image.rows < origWinSize.height)
-        return false;
-
-    if( sum0.rows < rn || sum0.cols < cn )
-    {
-        sum0.create(rn, cn, CV_32S);
-        sqsum0.create(rn, cn, CV_64F);
-        if (hasTiltedFeatures)
-            tilted0.create( rn, cn, CV_32S);
-    }
-    sum = Mat(rn, cn, CV_32S, sum0.data);
-    sqsum = Mat(rn, cn, CV_64F, sqsum0.data);
-
-    if( hasTiltedFeatures )
-    {
-        tilted = Mat(rn, cn, CV_32S, tilted0.data);
-        integral(image, sum, sqsum, tilted);
-    }
-    else
-        integral(image, sum, sqsum);
-    return true;
-}
-
-
-bool MHaarEvaluator::setWinSize(Size sz)
-{
-    cout << "setWinSize" << endl;
-    curSize = sz;
-    factor = (double)sz.width / origWinSize.width;
-    sqfactor = factor*factor;
-
-    normrect = Rect(1, 1, origWinSize.width-2, origWinSize.height-2);
-    const int* sdata = (const int*)sum.data;
-    const double* sqdata = (const double*)sqsum.data;
-    size_t sumStep = sum.step/sizeof(sdata[0]);
-    size_t sqsumStep = sqsum.step/sizeof(sqdata[0]);
-
-    CV_SUM_PTRS( p[0], p[1], p[2], p[3], sdata, normrect, sumStep );
-    CV_SUM_PTRS( pq[0], pq[1], pq[2], pq[3], sqdata, normrect, sqsumStep );
-
-    size_t fi, nfeatures = features->size();
-
-    for( fi = 0; fi < nfeatures; fi++ )
-        featuresPtr[fi].updatePtrs( !featuresPtr[fi].tilted ? sum : tilted, factor);
-    return true;
-}
-
-bool MHaarEvaluator::setWindow( Point pt )
-{
-    if( pt.x < 0 || pt.y < 0 ||
-        pt.x + curSize.width >= sum.cols ||
-        pt.y + curSize.height >= sum.rows )
-        return false;
-
-    size_t pOffset = pt.y * (sum.step/sizeof(int)) + pt.x;
-    size_t pqOffset = pt.y * (sqsum.step/sizeof(double)) + pt.x;
-    int valsum = CALC_SUM(p, pOffset);
-    double valsqsum = CALC_SUM(pq, pqOffset);
-
-    double nf = (double)normrect.area() * valsqsum - (double)valsum * valsum;
-    if( nf > 0. )
-        nf = sqrt(nf);
-    else
-        nf = 1.;
-    varianceNormFactor = 1./nf;
-    offset = (int)pOffset;
-
-    return true;
+    //cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
 }
