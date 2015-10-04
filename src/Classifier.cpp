@@ -109,127 +109,31 @@ public:
 };
 
 
-template<class FEval>
-inline int predictOrdered2( CascadeClassifier& cascade, Ptr<FeatureEvaluator> &_featureEvaluator, double& sum )
-{
-    int nstages = (int)cascade.data.stages.size();
-    int nodeOfs = 0, leafOfs = 0;
-    FEval& featureEvaluator = (FEval&)*_featureEvaluator;
-    float* cascadeLeaves = &cascade.data.leaves[0];
-    CascadeClassifier::Data::DTreeNode* cascadeNodes = &cascade.data.nodes[0];
-    CascadeClassifier::Data::DTree* cascadeWeaks = &cascade.data.classifiers[0];
-    CascadeClassifier::Data::Stage* cascadeStages = &cascade.data.stages[0];
-
-    for( int si = 0; si < nstages; si++ )
-    {
-        CascadeClassifier::Data::Stage& stage = cascadeStages[si];
-        int wi, ntrees = stage.ntrees;
-        sum = 0;
-
-        for( wi = 0; wi < ntrees; wi++ )
-        {
-            CascadeClassifier::Data::DTree& weak = cascadeWeaks[stage.first + wi];
-            int idx = 0, root = nodeOfs;
-
-            do
-            {
-                CascadeClassifier::Data::DTreeNode& node = cascadeNodes[root + idx];
-                double val = featureEvaluator(node.featureIdx);
-                idx = val < node.threshold ? node.left : node.right;
-            }
-            while( idx > 0 );
-            sum += cascadeLeaves[leafOfs - idx];
-            nodeOfs += weak.nodeCount;
-            leafOfs += weak.nodeCount + 1;
-        }
-        if( sum < stage.threshold )
-            return -si;
-    }
-    return 1;
-}
-
-
-template<class FEval>
-inline int predictOrderedStump2( CascadeClassifier& cascade, Ptr<FeatureEvaluator> &_featureEvaluator, double& sum )
-{
-    int nodeOfs = 0, leafOfs = 0;
-    FEval& featureEvaluator = (FEval&)*_featureEvaluator;
-    float* cascadeLeaves = &cascade.data.leaves[0];
-    CascadeClassifier::Data::DTreeNode* cascadeNodes = &cascade.data.nodes[0];
-    CascadeClassifier::Data::Stage* cascadeStages = &cascade.data.stages[0];
-
-    int nstages = (int)cascade.data.stages.size();
-    for( int stageIdx = 0; stageIdx < nstages; stageIdx++ )
-    {
-        CascadeClassifier::Data::Stage& stage = cascadeStages[stageIdx];
-        sum = 0.0;
-
-        int ntrees = stage.ntrees;
-        for( int i = 0; i < ntrees; i++, nodeOfs++, leafOfs+= 2 )
-        {
-            CascadeClassifier::Data::DTreeNode& node = cascadeNodes[nodeOfs];
-            double value = featureEvaluator(node.featureIdx);
-            sum += cascadeLeaves[ value < node.threshold ? leafOfs : leafOfs + 1 ];
-        }
-
-        if( sum < stage.threshold )
-            return -stageIdx;
-    }
-
-    return 1;
-}
-
-//optimize version, only resize detect windows in stead of resizing full image
-int CascadeClassifier::runAt2( Ptr<FeatureEvaluator>& evaluator, Point pt, double& weight )
-{
-    CV_Assert( oldCascade.empty() );
-
-    assert( data.featureType == FeatureEvaluator::HAAR ||
-            data.featureType == FeatureEvaluator::LBP ||
-            data.featureType == FeatureEvaluator::HOG );
-
-    if( !evaluator->setWindow(pt) )
-        return -1;
-    if( data.isStumpBased )
-    {
-        if( data.featureType == FeatureEvaluator::HAAR )
-            return predictOrderedStump<HaarEvaluator>( *this, evaluator, weight );
-        else if( data.featureType == FeatureEvaluator::LBP )
-            return predictCategoricalStump<LBPEvaluator>( *this, evaluator, weight );
-        else if( data.featureType == FeatureEvaluator::HOG )
-            return predictOrderedStump<HOGEvaluator>( *this, evaluator, weight );
-        else
-            return -2;
-    }
-    else
-    {
-        if( data.featureType == FeatureEvaluator::HAAR )
-            return predictOrdered<HaarEvaluator>( *this, evaluator, weight );
-        else if( data.featureType == FeatureEvaluator::LBP )
-            return predictCategorical<LBPEvaluator>( *this, evaluator, weight );
-        else if( data.featureType == FeatureEvaluator::HOG )
-            return predictOrdered<HOGEvaluator>( *this, evaluator, weight );
-        else
-            return -2;
-    }
-}
-
-
-bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
+bool MaskCascadeClassifier::detectSingleScale( Size winSize, const Mat& image, int stripCount, Size processingRectSize,
                                            int stripSize, int yStep, double factor, vector<Rect>& candidates,
                                            vector<int>& levels, vector<double>& weights, bool outputRejectLevels )
 {
-    if( !featureEvaluator->setImage( image, data.origWinSize ) )
+    cout << "detect single scale" << endl;
+    if (featureEvaluator->getFeatureType() == cv::FeatureEvaluator::HAAR)
+        cout << "is haar feature" << endl;
+
+    MHaarEvaluator* ev = (MHaarEvaluator*)(featureEvaluator.obj);
+    cout << "ev:" << ev << endl;
+    if( !ev->setWinSize( winSize ) )
         return false;
 
 #if defined (LOG_CASCADE_STATISTIC)
     logger.setImage(image);
 #endif
 
+    cout << "detect single scale 2" << endl;
+
     Mat currentMask;
     if (!maskGenerator.empty()) {
         currentMask=maskGenerator->generateMask(image);
     }
+
+    cout << "detect single scale 3" << endl;
 
     vector<Rect> candidatesVector;
     vector<int> rejectLevels;
@@ -252,6 +156,8 @@ bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount,
 #if defined (LOG_CASCADE_STATISTIC)
     logger.write();
 #endif
+
+    cout << "detect single scale 4" << endl;
 
     return true;
 }
@@ -277,6 +183,7 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
                                           int flags, Size minObjectSize, Size maxObjectSize,
                                           bool outputRejectLevels )
 {
+    cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
     const double GROUP_EPS = 0.2;
 
     CV_Assert( scaleFactor > 1 && image.depth() == CV_8U );
@@ -318,6 +225,13 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
     Mat imageBuffer(image.rows + 1, image.cols + 1, CV_8U);
     vector<Rect> candidates;
 
+    if( !featureEvaluator->setImage( grayImage, data.origWinSize ) )
+    {
+        cerr << "Error: set image for feature evaluator failed !" << endl;
+        return;
+    }
+
+
     for( double factor = 1; ; factor *= scaleFactor )
     {
         Size originalWindowSize = getOriginalWindowSize();
@@ -333,8 +247,8 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         if( windowSize.width < minObjectSize.width || windowSize.height < minObjectSize.height )
             continue;
 
-        Mat scaledImage( scaledImageSize, CV_8U, imageBuffer.data );
-        resize( grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
+        //Mat scaledImage( scaledImageSize, CV_8U, imageBuffer.data );
+        //resize( grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
 
         int yStep;
         if( getFeatureType() == cv::FeatureEvaluator::HOG )
@@ -353,7 +267,7 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         stripCount = std::min(std::max(stripCount, 1), 100);
         stripSize = (((processingRectSize.height + stripCount - 1)/stripCount + yStep-1)/yStep)*yStep;
 
-        if( !detectSingleScale( scaledImage, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
+        if( !detectSingleScale( windowSize, grayImage, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
             rejectLevels, levelWeights, outputRejectLevels ) )
             break;
     }
@@ -370,4 +284,81 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
     {
         groupRectangles( objects, minNeighbors, GROUP_EPS );
     }
+    cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
+}
+
+
+bool MHaarEvaluator::setImage( const Mat &image, Size _origWinSize )
+{
+    int rn = image.rows+1, cn = image.cols+1;
+    origWinSize = _origWinSize;
+
+    if (image.cols < origWinSize.width || image.rows < origWinSize.height)
+        return false;
+
+    if( sum0.rows < rn || sum0.cols < cn )
+    {
+        sum0.create(rn, cn, CV_32S);
+        sqsum0.create(rn, cn, CV_64F);
+        if (hasTiltedFeatures)
+            tilted0.create( rn, cn, CV_32S);
+    }
+    sum = Mat(rn, cn, CV_32S, sum0.data);
+    sqsum = Mat(rn, cn, CV_64F, sqsum0.data);
+
+    if( hasTiltedFeatures )
+    {
+        tilted = Mat(rn, cn, CV_32S, tilted0.data);
+        integral(image, sum, sqsum, tilted);
+    }
+    else
+        integral(image, sum, sqsum);
+    return true;
+}
+
+
+bool MHaarEvaluator::setWinSize(Size sz)
+{
+    cout << "setWinSize" << endl;
+    curSize = sz;
+    factor = (double)sz.width / origWinSize.width;
+    sqfactor = factor*factor;
+
+    normrect = Rect(1, 1, origWinSize.width-2, origWinSize.height-2);
+    const int* sdata = (const int*)sum.data;
+    const double* sqdata = (const double*)sqsum.data;
+    size_t sumStep = sum.step/sizeof(sdata[0]);
+    size_t sqsumStep = sqsum.step/sizeof(sqdata[0]);
+
+    CV_SUM_PTRS( p[0], p[1], p[2], p[3], sdata, normrect, sumStep );
+    CV_SUM_PTRS( pq[0], pq[1], pq[2], pq[3], sqdata, normrect, sqsumStep );
+
+    size_t fi, nfeatures = features->size();
+
+    for( fi = 0; fi < nfeatures; fi++ )
+        featuresPtr[fi].updatePtrs( !featuresPtr[fi].tilted ? sum : tilted, factor);
+    return true;
+}
+
+bool MHaarEvaluator::setWindow( Point pt )
+{
+    if( pt.x < 0 || pt.y < 0 ||
+        pt.x + curSize.width >= sum.cols ||
+        pt.y + curSize.height >= sum.rows )
+        return false;
+
+    size_t pOffset = pt.y * (sum.step/sizeof(int)) + pt.x;
+    size_t pqOffset = pt.y * (sqsum.step/sizeof(double)) + pt.x;
+    int valsum = CALC_SUM(p, pOffset);
+    double valsqsum = CALC_SUM(pq, pqOffset);
+
+    double nf = (double)normrect.area() * valsqsum - (double)valsum * valsum;
+    if( nf > 0. )
+        nf = sqrt(nf);
+    else
+        nf = 1.;
+    varianceNormFactor = 1./nf;
+    offset = (int)pOffset;
+
+    return true;
 }
