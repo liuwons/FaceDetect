@@ -66,19 +66,8 @@ vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
 
     vector<Rect> faces;
    
-    /*if(param["debug"] == "yes")
-    {
-        cout << "calc integImage" << endl;
-    }*/
-
-    //IntImage* ii = new IntImage(mask);
     ii->calcIntg(mask);
 	cout << "got integral image" << endl;
-
-    /*if(param["debug"] == "yes")
-    {
-        cout << "detectMultiScale" << endl;
-    }*/
 
     cascade.detectMultiScale(Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(18, 18));
 

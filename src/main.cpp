@@ -99,24 +99,31 @@ int main(int argc, char** argv)
     }
     else
     {
+
         IplImage* img = cvLoadImage(param["file"].data(), CV_LOAD_IMAGE_COLOR);
         
         IplImage* imgSmooth = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 3);
         cvSmooth(img, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
+		
+		FaceDetector* fd = new FaceDetector(img->width, img->height, atoi(param["fps"].data()), atoi(param["fbuf"].data()));
         
-        /*IplImage* imgGray = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1);
-        cvCvtColor(imgSmooth, imgGray, CV_BGR2GRAY);*/
+		vector<Rect> faces = fd->detectAll(imgSmooth);
+		for (int k = 0; k < faces.size(); k++)
+		{
+			Rect rect = faces[k];
+			cvRectangle(imgSmooth,
+				cvPoint(rect.x, rect.y),
+				cvPoint(rect.x + rect.width, rect.y + rect.height),
+				cvScalar(0, 0, 255));
+		}
 
-        if(param["debug"] == "yes")
-        {
-            cout << "save smooth.jpg" << endl;
-            cvSaveImage("smooth.jpg", imgSmooth);
-            /*cout << "save gray.bmp" << endl;
-            cvSaveImage("gray.bmp", imgGray);*/
-        }
-
-        /*FaceDetector fd;
-        vector<CvRect> rects = fd.getCandidateRect(imgSmooth);*/
+		if (param["debug"] == "yes")
+		{
+			char fname[256];
+			sprintf(fname, "%s/smooth%d.jpg", param["log"].data(), 5648);
+			cout << "save " << string(fname) << endl;
+			cvSaveImage(fname, imgSmooth);
+		}
 
     }
 

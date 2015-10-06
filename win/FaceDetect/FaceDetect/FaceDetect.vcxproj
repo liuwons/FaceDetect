@@ -44,8 +44,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\bin\opencv\build\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\bin\opencv\build\x86\vc12\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\bin\cv\install\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\bin\cv\lib\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -70,7 +70,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\bin\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
     </ClCompile>
     <Link>
@@ -79,11 +79,10 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
       <AdditionalLibraryDirectories>D:\bin\opencv\build\x86\vc12\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_core2411.lib;opencv_highgui2411.lib;opencv_imgproc2411.lib;opencv_objdetect2411.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_core2412.lib;opencv_highgui2412.lib;opencv_imgproc2412.lib;opencv_objdetect2412.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\Classifier.cpp" />
     <ClCompile Include="..\..\..\src\FaceDetect.cpp" />
     <ClCompile Include="..\..\..\src\main.cpp" />
     <ClCompile Include="..\..\..\src\MoveDetect.cpp" />
@@ -92,7 +91,6 @@
     <ClCompile Include="..\..\..\src\config.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\Classifier.h" />
     <ClInclude Include="..\..\..\src\config.h" />
     <ClInclude Include="..\..\..\src\cv_header.h" />
     <ClInclude Include="..\..\..\src\FaceDetect.h" />
