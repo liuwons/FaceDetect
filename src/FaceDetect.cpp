@@ -14,7 +14,7 @@ using namespace cv;
 
 using namespace std;
 
-const string FaceDetector::DEFAULT_CASCADE_PATH = "./cascade.xml";
+const string FaceDetector::DEFAULT_CASCADE_PATH = "cascade.xml";
 const int FaceDetector::MIN_SIZE = 10;
 
 FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
@@ -43,7 +43,10 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
         cascade_path = cp;
     else
         cascade_path = DEFAULT_CASCADE_PATH;
-    assert(cascade.load(cascade_path));
+
+	cout << "cascade path to load:" << cascade_path << endl;
+    bool loaded = cascade.load(cascade_path);
+	assert(loaded);
 
     sd = new SkinDetector(w, h);
     md = new BackgroundDiffMoveDetector(w, h, fp, fb);

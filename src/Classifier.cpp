@@ -49,7 +49,7 @@ public:
                     int height = intImg->height;
 
                     int origX = x * scalingFactor;
-                    int origY = x * scalingFactor;
+                    int origY = y * scalingFactor;
                     int origX2 = origX + winSize.width;
                     int origY2 = origY + winSize.height;
 
