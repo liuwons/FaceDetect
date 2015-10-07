@@ -6,6 +6,8 @@
 #include <stdio.h>
 using namespace std;
 
+#include <time.h>
+
 FrameDiffMoveDetector::FrameDiffMoveDetector(int w, int h)
 {
     width = w;
@@ -32,8 +34,13 @@ const IplImage* FrameDiffMoveDetector::detect(const IplImage* img, int val)
     }
     else
     {
+		clock_t start = clock();
         cvAbsDiff(imgLast, img, imgTmp);
+		clock_t dif = clock();
         cvThreshold(imgTmp, imgMask, 10, val, CV_THRESH_BINARY);
+		clock_t thr = clock();
+		cout << "diff time:" << difftime(dif, start) / CLOCKS_PER_SEC << endl;
+		cout << "thresh time:" << difftime(thr, dif) / CLOCKS_PER_SEC << endl;
     }
 
     cvCopy(img, imgLast);
@@ -191,8 +198,13 @@ const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img, int val)
 
         index++;
 
+		clock_t start = clock();
         cvAbsDiff(imgBack, img, imgTmp);
+		clock_t dif = clock();
         cvThreshold(imgTmp, imgMask, 10, val, CV_THRESH_BINARY);
+		clock_t thr = clock();
+		cout << "diff time:" << difftime(dif, start) / CLOCKS_PER_SEC << endl;
+		cout << "thresh time:" << difftime(thr, dif) / CLOCKS_PER_SEC << endl;
 
         return imgMask;
     }

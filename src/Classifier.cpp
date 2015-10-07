@@ -11,7 +11,7 @@ struct getRect { Rect operator ()(const CvAvgComp& e) const { return e.rect; } }
 class MaskCascadeClassifierInvoker : public ParallelLoopBody
 {
 public:
-    MaskCascadeClassifierInvoker( MaskCascadeClassifier& _cc, Size _sz1, int _stripSize, int _yStep, double _factor,
+    MaskCascadeClassifierInvoker(CvRect oRect, CvRect cRect, MaskCascadeClassifier& _cc, Size _sz1, int _stripSize, int _yStep, double _factor,
         vector<Rect>& _vec, vector<int>& _levels, vector<double>& _weights, bool outputLevels, const Mat& _mask, Mutex* _mtx)
     {
         classifier = &_cc;
@@ -24,6 +24,8 @@ public:
         levelWeights = outputLevels ? &_weights : 0;
         mask = _mask;
         mtx = _mtx;
+		originRect = oRect;
+		currentRect = cRect;
     }
 
     void operator()(const Range& range) const
@@ -32,11 +34,15 @@ public:
 
         Size winSize(cvRound(classifier->data.origWinSize.width * scalingFactor), cvRound(classifier->data.origWinSize.height * scalingFactor));
 
-        int y1 = range.start * stripSize;
-        int y2 = min(range.end * stripSize, processingRectSize.height);
+        int y1 = range.start * stripSize + currentRect.y;
+        int y2 = min(range.end * stripSize + currentRect.y, currentRect.y + processingRectSize.height - classifier->data.origWinSize.height);
+
+		int x1 = currentRect.x;
+		int x2 = max(0, currentRect.x + currentRect.width - classifier->data.origWinSize.width);
+
         for( int y = y1; y < y2; y += yStep )
         {
-            for( int x = 0; x < processingRectSize.width; x += yStep )
+            for( int x = x1; x < x2; x += yStep )
             {
                 if ( (!mask.empty()) && (mask.at<uchar>(Point(x,y))==0)) {
                     continue;
@@ -52,6 +58,8 @@ public:
                     int origY = y * scalingFactor;
                     int origX2 = origX + winSize.width;
                     int origY2 = origY + winSize.height;
+					if (origX2 > intImg->width || origY2 > intImg->height)
+						continue;
 
                     int area = winSize.width * winSize.height;
                     int integ = intImg->data[origY2*width+origX2] 
@@ -105,12 +113,13 @@ public:
     vector<double> *levelWeights;
     Mat mask;
     Mutex* mtx;
-
+	CvRect originRect;
+	CvRect currentRect;
 };
 
 
 
-bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
+bool MaskCascadeClassifier::detectSingleScale(CvRect oRect, CvRect cRect, const Mat& image, int stripStart, int stripEnd, Size processingRectSize,
                                            int stripSize, int yStep, double factor, vector<Rect>& candidates,
                                            vector<int>& levels, vector<double>& weights, bool outputRejectLevels )
 {
@@ -132,14 +141,14 @@ bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount,
     Mutex mtx;
     if( outputRejectLevels )
     {
-        parallel_for_(Range(0, stripCount), MaskCascadeClassifierInvoker( *this, processingRectSize, stripSize, yStep, factor,
+        parallel_for_(Range(stripStart, stripEnd), MaskCascadeClassifierInvoker(oRect, cRect, *this, processingRectSize, stripSize, yStep, factor,
             candidatesVector, rejectLevels, levelWeights, true, currentMask, &mtx));
         levels.insert( levels.end(), rejectLevels.begin(), rejectLevels.end() );
         weights.insert( weights.end(), levelWeights.begin(), levelWeights.end() );
     }
     else
     {
-         parallel_for_(Range(0, stripCount), MaskCascadeClassifierInvoker( *this, processingRectSize, stripSize, yStep, factor,
+		parallel_for_(Range(stripStart, stripEnd), MaskCascadeClassifierInvoker(oRect, cRect, *this, processingRectSize, stripSize, yStep, factor,
             candidatesVector, rejectLevels, levelWeights, false, currentMask, &mtx));
     }
     candidates.insert( candidates.end(), candidatesVector.begin(), candidatesVector.end() );
@@ -152,20 +161,18 @@ bool MaskCascadeClassifier::detectSingleScale( const Mat& image, int stripCount,
 }
 
 
-void MaskCascadeClassifier::detectMultiScale( const Mat& image, const IntImage* ii, vector<Rect>& objects,
+void MaskCascadeClassifier::detectMultiScale(CvRect ori, const Mat& image, const IntImage* ii, vector<Rect>& objects,
                                           double scaleFactor, int minNeighbors,
                                           int flags, Size minObjectSize, Size maxObjectSize)
 {
-    //cout << "MaskCascadeClassifier::detectMultiScale start" << endl;
     intImg = ii;
     vector<int> fakeLevels;
     vector<double> fakeWeights;
-    detectMultiScale( image, objects, fakeLevels, fakeWeights, scaleFactor,
+    detectMultiScale(ori, image, objects, fakeLevels, fakeWeights, scaleFactor,
         minNeighbors, flags, minObjectSize, maxObjectSize, false );
-    //cout << "MaskCascadeClassifier::detectMultiScale end" << endl;
 }
 
-void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& objects,
+void MaskCascadeClassifier::detectMultiScale(CvRect ori, const Mat& image, vector<Rect>& objects,
                                           vector<int>& rejectLevels,
                                           vector<double>& levelWeights,
                                           double scaleFactor, int minNeighbors,
@@ -219,7 +226,14 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
 
         Size windowSize( cvRound(originalWindowSize.width*factor), cvRound(originalWindowSize.height*factor) );
         Size scaledImageSize( cvRound( grayImage.cols/factor ), cvRound( grayImage.rows/factor ) );
-        Size processingRectSize( scaledImageSize.width - originalWindowSize.width, scaledImageSize.height - originalWindowSize.height );
+        
+		CvRect cRect;
+		cRect.x = min(int(ori.x/factor), scaledImageSize.width - 1);
+		cRect.y = min(int(ori.y/factor), scaledImageSize.height - 1);
+		cRect.width = min(int(ori.width/factor), scaledImageSize.width);
+		cRect.height = min(int(ori.height/factor), scaledImageSize.height);
+		
+        Size processingRectSize(cRect.width - originalWindowSize.width, cRect.height - originalWindowSize.height );
 
         if( processingRectSize.width <= 0 || processingRectSize.height <= 0 )
             break;
@@ -228,8 +242,8 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         if( windowSize.width < minObjectSize.width || windowSize.height < minObjectSize.height )
             continue;
 
-        Mat scaledImage( scaledImageSize, CV_8U, imageBuffer.data );
-        resize( grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
+        Mat scaledImage(scaledImageSize, CV_8U, imageBuffer.data );
+        resize(grayImage, scaledImage, scaledImageSize, 0, 0, CV_INTER_LINEAR );
 
         int yStep;
         if( getFeatureType() == cv::FeatureEvaluator::HOG )
@@ -244,11 +258,12 @@ void MaskCascadeClassifier::detectMultiScale( const Mat& image, vector<Rect>& ob
         int stripCount, stripSize;
 
         const int PTS_PER_THREAD = 1000;
+		
         stripCount = ((processingRectSize.width/yStep)*(processingRectSize.height + yStep-1)/yStep + PTS_PER_THREAD/2)/PTS_PER_THREAD;
         stripCount = std::min(std::max(stripCount, 1), 100);
         stripSize = (((processingRectSize.height + stripCount - 1)/stripCount + yStep-1)/yStep)*yStep;
 
-        if( !detectSingleScale( scaledImage, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
+        if( !detectSingleScale(ori, cRect, scaledImage, 0, stripCount, processingRectSize, stripSize, yStep, factor, candidates,
             rejectLevels, levelWeights, outputRejectLevels ) )
             break;
     }

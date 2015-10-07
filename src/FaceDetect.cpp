@@ -54,32 +54,27 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
     ii = new IntImage(w, h);
 }
 
-vector<Rect> FaceDetector::detectAll(const IplImage* img)
+vector<Rect> FaceDetector::detectAll(const IplImage* img, CvRect* searched)
 {
     IplImage* mask = getMask(img);
-    return detect(img, mask);
+	CvRect ori = getRegion(mask, 10);
+	cout << "region:" << ori.x << " " << ori.y << " " << ori.width << " " << ori.height << endl;
+	if (searched)
+	{
+		*searched = ori;
+	}
+    return detect(img, mask, ori);
 }
 
-vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask)
+vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask, CvRect ori)
 {
     clock_t start = clock();
 
     vector<Rect> faces;
    
-    /*if(param["debug"] == "yes")
-    {
-        cout << "calc integImage" << endl;
-    }*/
-
-    //IntImage* ii = new IntImage(mask);
     ii->calcIntg(mask);
 
-    /*if(param["debug"] == "yes")
-    {
-        cout << "detectMultiScale" << endl;
-    }*/
-
-    cascade.detectMultiScale(Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(18, 18));
+    cascade.detectMultiScale(ori, Mat(img), ii, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(18, 18));
 
     clock_t finish = clock();
 
@@ -109,99 +104,54 @@ IplImage* FaceDetector::getMask(const IplImage* img)
     const IplImage* imgMaskSkin = sd->detect(img, 1);
 
     cvAnd(imgMaskMove, imgMaskSkin, imgMask);
-    //cvOr(imgMaskMove, imgMaskSkin, imgMask);
 
-    //vector<CvRect> rects = regionAnalyze(imgMask, MIN_SIZE);
-    
-    /*if(param["debug"] == "yes")
-    {
-        finish = clock();
-        double dura = difftime(finish, start);
-        cout << "FaceDetector::getCandidateRect cost time:" << dura/CLOCKS_PER_SEC << " secs" << endl;
-    }*/
-
-    /*if(param["debug"] == "yes")
-    {
-        char fname[256];
-        
-        sprintf(fname, "%s/mask_move%d.bmp", param["log"].data(), index);
-        cout << "save mask_move.bmp" << endl;
-        cvSaveImage(fname, imgMaskMove);
-        
-        sprintf(fname, "%s/mask_skin%d.bmp", param["log"].data(), index);
-        cout << "save mask_skin.bmp" << endl;
-        cvSaveImage(fname, imgMaskSkin);
-        
-        sprintf(fname, "%s/mask%d.bmp", param["log"].data(), index);
-        cout << "save mask.bmp" << endl;
-        cvSaveImage(fname, imgMask);
-    }*/
+	if (param["debug"] == "yes")
+		cout << "get mask cost time:" << difftime(clock(), start) / CLOCKS_PER_SEC << endl;
 
     index ++;
 
     return imgMask;
 }
 
-/*
-vector<CvRect> regionAnalyze(IplImage* imgMask, int min_size)
+CvRect FaceDetector::getRegion(const IplImage* mask, int th)
 {
-    vector<CvRect> res;
+	CvRect result;
+	
+	clock_t st = clock();
+	IplImage* img = (IplImage*)cvClone(mask);
+	CvMemStorage* storage = cvCreateMemStorage(0);
+	CvSeq* contour = 0;
+	cvFindContours(img, storage, &contour, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE, cvPoint(0, 0));
+	
+	vector<CvRect> regions;
+	int xmax = 0, xmin = width, ymax = 0, ymin = height;
+	for (; contour != 0; contour = contour->h_next)
+	{
+		CvRect rec = cvBoundingRect(contour, 0);
+		if (rec.width < th || rec.height < th)
+			continue;
 
-    unsigned char* p = (unsigned char*)imgMask->imageData;
-    for(int i = 0; i < imgMask->height; i ++)
-    {
-        int left = 0, right = 0;
-        while(right < imgMask->width)
-        {
-            while(p[left] == 0 && left < imgMask->width)
-                left ++;
-            right = left;
-            while(p[right] && right < imgMask->width)
-                right ++;
-            if(right - left > min_size)
-            {
-                for(int j = left; j < right; j ++)
-                    p[j] = 1;
-            }
-            left = right;
-        }
-        p += imgMask->widthStep;
-    }
+		if (rec.x < xmin)
+			xmin = rec.x;
+		if (rec.y < ymin)
+			ymin = rec.y;
+		if (rec.x + rec.width > xmax)
+			xmax = rec.x + rec.width;
+		if (rec.y + rec.height > ymax)
+			ymax = rec.y + rec.height;
 
-    for(int i = 0; i < imgMask->width; i ++)
-    {
-        p = (unsigned char*)imgMask->imageData + i;
-        int top = 0, bottom = 0;
-        while(bottom < imgMask->height)
-        {
-            while(p[top*imgMask->widthStep] == 0 && top < imgMask->height)
-                top++;
-            bottom = top;
-            while(p[bottom*imgMask->widthStep] && bottom < imgMask->height)
-                bottom++;
-            if(bottom - top > min_size)
-            {
-                for(int j = top; j < bottom; j ++)
-                {
-                    p[j*imgMask->widthStep] = 1;
-                }
-            }
-            top = bottom;
-        }
-    }
-    
-    p = (unsigned char*)imgMask->imageData;
-    for(int i = 0; i < imgMask->height; i ++)
-    {
-        for(int j = 0; j < imgMask->width; j ++)
-        {
-            if(p[j] == 1)
-                p[j] = 255;
-            else if(p[j] == 255)
-                p[j] = 0;
-        }
-        p += imgMask->widthStep;
-    }
+	}
 
-    return res;
-}*/
+	if (xmax > xmin)
+	{
+		result = cvRect(xmin, ymin, xmax - xmin, ymax - ymin);
+	}
+	else
+	{
+		result = cvRect(0, 0, width, height);
+	}
+
+	cout << "contour ana time:" << difftime(clock(), st) / CLOCKS_PER_SEC << endl;
+
+	return result;
+}

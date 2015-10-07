@@ -11,6 +11,8 @@ using namespace std;
 #include "FaceDetect.h"
 #include "config.h"
 
+#include <time.h>
+
 int main(int argc, char** argv)
 {
     if(!parse_param(argc, argv, param))
@@ -62,20 +64,30 @@ int main(int argc, char** argv)
         {
             if(!fd)
             {
+				cout << "frame size:" << frame->width << " " << frame->height << endl;
                 fd = new FaceDetector(frame->width, frame->height, atoi(param["fps"].data()), atoi(param["fbuf"].data()));
             }
             IplImage* imgSmooth = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
+
+			clock_t start = clock();
             cvSmooth(frame, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
+			clock_t end = clock();
+			cout << "smooth cost time:" << difftime(end, start) / CLOCKS_PER_SEC << endl;
             
-            vector<Rect> faces = fd->detectAll(imgSmooth);
+			CvRect searched;
+            vector<Rect> faces = fd->detectAll(imgSmooth, &searched);
             for(int k = 0; k < faces.size(); k ++)
             {
                 Rect rect = faces[k];
                 cvRectangle(imgSmooth, 
                         cvPoint(rect.x, rect.y), 
                         cvPoint(rect.x + rect.width, rect.y + rect.height),
-                        cvScalar(0, 0, 255));
+                        cvScalar(0, 0, 255));	
             }
+			cvRectangle(imgSmooth,
+				cvPoint(searched.x, searched.y),
+				cvPoint(searched.x + searched.width, searched.y + searched.height),
+				cvScalar(0, 255, 0));
             cvShowImage("FaceDetect", imgSmooth);
 			cvWaitKey(1);
             
@@ -104,19 +116,11 @@ int main(int argc, char** argv)
         IplImage* imgSmooth = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 3);
         cvSmooth(img, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
         
-        /*IplImage* imgGray = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 1);
-        cvCvtColor(imgSmooth, imgGray, CV_BGR2GRAY);*/
-
         if(param["debug"] == "yes")
         {
             cout << "save smooth.jpg" << endl;
             cvSaveImage("smooth.jpg", imgSmooth);
-            /*cout << "save gray.bmp" << endl;
-            cvSaveImage("gray.bmp", imgGray);*/
         }
-
-        /*FaceDetector fd;
-        vector<CvRect> rects = fd.getCandidateRect(imgSmooth);*/
 
     }
 

@@ -37,11 +37,10 @@ class FaceDetector
         const static int MIN_SIZE;
 
         FaceDetector(int w, int h, int fp, int fb, const char* cp = 0);
-        vector<Rect> detect(const IplImage* img, const IplImage* mask);
-        vector<Rect> detectAll(const IplImage* img);
+        vector<Rect> detect(const IplImage* img, const IplImage* mask, CvRect ori);
+        vector<Rect> detectAll(const IplImage* img, CvRect* searched = 0);
         IplImage* getMask(const IplImage* img);
+		CvRect getRegion(const IplImage* mask, int th);
 };
-
-//vector<CvRect> regionAnalyze(IplImage* imgMask, int min_size);
 
 #endif

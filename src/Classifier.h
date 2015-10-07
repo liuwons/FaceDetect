@@ -84,7 +84,7 @@ class IntImage
 class MaskCascadeClassifier : public CascadeClassifier
 {
     public:
-        CV_WRAP virtual void detectMultiScale( const Mat& image,
+        CV_WRAP virtual void detectMultiScale(CvRect ori, const Mat& image,
                                    const IntImage* ii,
                                    CV_OUT vector<Rect>& objects,
                                    double scaleFactor=1.1,
@@ -92,7 +92,7 @@ class MaskCascadeClassifier : public CascadeClassifier
                                    Size minSize=Size(),
                                    Size maxSize=Size() );
 
-        CV_WRAP virtual void detectMultiScale( const Mat& image,
+        CV_WRAP virtual void detectMultiScale(CvRect ori, const Mat& image,
                                    CV_OUT vector<Rect>& objects,
                                    vector<int>& rejectLevels,
                                    vector<double>& levelWeights,
@@ -103,7 +103,7 @@ class MaskCascadeClassifier : public CascadeClassifier
                                    bool outputRejectLevels=false );
 
     protected:
-        virtual bool detectSingleScale( const Mat& image, int stripCount, Size processingRectSize,
+        virtual bool detectSingleScale(CvRect oRect, CvRect cRect, const Mat& image, int stripStart, int stripEnd, Size processingRectSize,
                 int stripSize, int yStep, double factor, vector<Rect>& candidates,
                 vector<int>& rejectLevels, vector<double>& levelWeights, bool outputRejectLevels=false);
 
