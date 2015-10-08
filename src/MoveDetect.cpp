@@ -24,7 +24,7 @@ FrameDiffMoveDetector::FrameDiffMoveDetector(int w, int h)
  * The input image is 1 channel gray image.
  * The result is a mask image represents the region of movements.
  * */
-const IplImage* FrameDiffMoveDetector::detect(const IplImage* img, int val)
+IplImage* FrameDiffMoveDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);
 
@@ -100,7 +100,7 @@ int compare_uchar(const void* a, const void* b)
     return m > n ? 1 : -1;
 }
 
-const IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img, int val)
+IplImage* BackgroundDiffMoveDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);
 

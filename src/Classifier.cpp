@@ -34,11 +34,13 @@ public:
 
         Size winSize(cvRound(classifier->data.origWinSize.width * scalingFactor), cvRound(classifier->data.origWinSize.height * scalingFactor));
 
-        int y1 = range.start * stripSize + currentRect.y;
-        int y2 = min(range.end * stripSize + currentRect.y, currentRect.y + processingRectSize.height - classifier->data.origWinSize.height);
+		int y1, y2, x1, x2;
 
-		int x1 = currentRect.x;
-		int x2 = max(0, currentRect.x + currentRect.width - classifier->data.origWinSize.width);
+		x1 = currentRect.x;
+		x2 = max(0, currentRect.x + currentRect.width - classifier->data.origWinSize.width);
+		y1 = range.start * stripSize + currentRect.y;
+		y2 = min(range.end * stripSize + currentRect.y, currentRect.y + processingRectSize.height - classifier->data.origWinSize.height);
+
 
         for( int y = y1; y < y2; y += yStep )
         {
@@ -228,10 +230,18 @@ void MaskCascadeClassifier::detectMultiScale(CvRect ori, const Mat& image, vecto
         Size scaledImageSize( cvRound( grayImage.cols/factor ), cvRound( grayImage.rows/factor ) );
         
 		CvRect cRect;
-		cRect.x = min(int(ori.x/factor), scaledImageSize.width - 1);
-		cRect.y = min(int(ori.y/factor), scaledImageSize.height - 1);
-		cRect.width = min(int(ori.width/factor), scaledImageSize.width);
-		cRect.height = min(int(ori.height/factor), scaledImageSize.height);
+		if (opt)
+		{
+			cRect.x = min(int(ori.x / factor), scaledImageSize.width - 1);
+			cRect.y = min(int(ori.y / factor), scaledImageSize.height - 1);
+			cRect.width = min(int(ori.width / factor), scaledImageSize.width);
+			cRect.height = min(int(ori.height / factor), scaledImageSize.height);
+		}
+		else
+		{
+			cRect = cvRect(0, 0, scaledImageSize.width, scaledImageSize.height);
+		}
+		
 		
         Size processingRectSize(cRect.width - originalWindowSize.width, cRect.height - originalWindowSize.height );
 

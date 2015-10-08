@@ -33,6 +33,7 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
     imgMask = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
     imgGray = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
     imgBack = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
+    imgCont = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1);
 
     md = new BackgroundDiffMoveDetector(width, height, fp, fb);
     sd = new SkinDetector(width, height);
@@ -54,19 +55,32 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
     ii = new IntImage(w, h);
 }
 
-vector<Rect> FaceDetector::detectAll(const IplImage* img, CvRect* searched)
+vector<Rect> FaceDetector::detectAll(IplImage* img, CvRect* searched)
 {
     IplImage* mask = getMask(img);
-	CvRect ori = getRegion(mask, 10);
+	CvRect ori;
+
+	if (opt)
+	{
+		ori = analyze(mask, 10, imgGray);
+	}
+	else
+	{
+		ori = cvRect(0, 0, mask->width, mask->height);
+	}
+
 	cout << "region:" << ori.x << " " << ori.y << " " << ori.width << " " << ori.height << endl;
 	if (searched)
 	{
 		*searched = ori;
 	}
-    return detect(img, mask, ori);
+    vector<Rect> results = detect(imgGray, mask, ori);
+	last_detected = results;
+
+	return results;
 }
 
-vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask, CvRect ori)
+vector<Rect> FaceDetector::detect(IplImage* img, IplImage* mask, CvRect ori)
 {
     clock_t start = clock();
 
@@ -87,7 +101,7 @@ vector<Rect> FaceDetector::detect(const IplImage* img, const IplImage* mask, CvR
     return faces;
 }
 
-IplImage* FaceDetector::getMask(const IplImage* img)
+IplImage* FaceDetector::getMask(IplImage* img)
 {
     assert(img->width == width && img->height == height);
 
@@ -99,7 +113,22 @@ IplImage* FaceDetector::getMask(const IplImage* img)
 
     cvCvtColor(img, imgGray, CV_BGR2GRAY);
 
-    const IplImage* imgMaskMove = md->detect(imgGray, 1);
+    IplImage* imgMaskMove = md->detect(imgGray, 1);
+
+	for (vector<Rect>::iterator iter = last_detected.begin(); iter < last_detected.end(); iter++)
+	{
+		unsigned char* p = (unsigned char*)imgMaskMove->imageData + iter->y * imgMaskMove->widthStep;
+		int y1 = iter->y + iter->height;
+		int x1 = iter->x + iter->width;
+		for (int y = iter->y; y < y1; y++)
+		{
+			for (int x = iter->x; x < x1; x++)
+			{
+				p[x] = 1;
+			}
+			p += imgMaskMove->widthStep;
+		}
+	}
     
     const IplImage* imgMaskSkin = sd->detect(img, 1);
 
@@ -113,23 +142,29 @@ IplImage* FaceDetector::getMask(const IplImage* img)
     return imgMask;
 }
 
-CvRect FaceDetector::getRegion(const IplImage* mask, int th)
+CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 {
-	CvRect result;
-	
 	clock_t st = clock();
-	IplImage* img = (IplImage*)cvClone(mask);
+	
+	CvRect result;
+	cvCopy(mask, imgCont);
 	CvMemStorage* storage = cvCreateMemStorage(0);
 	CvSeq* contour = 0;
-	cvFindContours(img, storage, &contour, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE, cvPoint(0, 0));
+	cvFindContours(imgCont, storage, &contour, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0, 0));
+	cvZero(imgCont);
 	
 	vector<CvRect> regions;
 	int xmax = 0, xmin = width, ymax = 0, ymin = height;
+	int contour_index = 0;
 	for (; contour != 0; contour = contour->h_next)
 	{
 		CvRect rec = cvBoundingRect(contour, 0);
-		if (rec.width < th || rec.height < th)
+		if (rec.width < th || rec.height < th || cvContourArea(contour) < th*th/2)
 			continue;
+
+		contour_index++;
+
+		cvDrawContours(imgCont, contour, cvScalar(contour_index, contour_index, contour_index), cvScalar(0, 0, 0), CV_FILLED, CV_FILLED);
 
 		if (rec.x < xmin)
 			xmin = rec.x;
@@ -141,6 +176,56 @@ CvRect FaceDetector::getRegion(const IplImage* mask, int th)
 			ymax = rec.y + rec.height;
 
 	}
+
+	assert(contour_index < 256);
+
+	char fname2[256];
+	sprintf(fname2, "log/gray_before%d.bmp", index);
+	cvSaveImage(fname2, src);
+
+	unsigned char* psrc;
+	unsigned char* pcon;
+	hist.clear();
+	psrc = (unsigned char*)src->imageData;
+	pcon = (unsigned char*)imgCont->imageData;
+	for (int h = 0; h < src->height; h++)
+	{
+		for (int w = 0; w < src->width; w++)
+		{
+			if (pcon[w] != 0)
+			{
+				hist.pix_count++;
+				hist.bin[psrc[w]] ++;
+			}
+		}
+		psrc += src->widthStep;
+		pcon += imgCont->widthStep;
+	}
+	hist.normalize();
+	psrc = (unsigned char*)src->imageData;
+	pcon = (unsigned char*)imgCont->imageData;
+	for (int h = 0; h < src->height; h++)
+	{
+		for (int w = 0; w < src->width; w++)
+		{
+			int id = pcon[w];
+			if (id != 0)
+			{
+				psrc[w] = hist.map[psrc[w]];
+			}
+		}
+		psrc += src->widthStep;
+		pcon += imgCont->widthStep;
+	}
+
+	char fname1[256];
+	sprintf(fname1, "log/gray_after%d.bmp", index);
+	cvSaveImage(fname1, src);
+
+	
+	char fname[256];
+	sprintf(fname, "log/cont%d_%d.bmp", index, contour_index);
+	cvSaveImage(fname, imgCont);
 
 	if (xmax > xmin)
 	{
