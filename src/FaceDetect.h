@@ -67,6 +67,7 @@ class FaceDetector
 
 		vector<Rect> last_detected;
 		histogram hist;
+		CvMemStorage* storage;
 
     public:
         const static string DEFAULT_CASCADE_PATH; 

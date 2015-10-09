@@ -53,6 +53,7 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
     md = new BackgroundDiffMoveDetector(w, h, fp, fb);
 
     ii = new IntImage(w, h);
+	storage = cvCreateMemStorage(0);
 }
 
 FaceDetector::~FaceDetector()
@@ -71,6 +72,7 @@ FaceDetector::~FaceDetector()
 	delete md;
 	delete sd;
 	delete ii;
+	cvReleaseMemStorage(&storage);
 }
 
 vector<Rect> FaceDetector::detectAll(IplImage* img, CvRect* searched)
@@ -167,7 +169,7 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 	
 	CvRect result;
 	cvCopy(mask, imgCont);
-	CvMemStorage* storage = cvCreateMemStorage(0);
+	cvClearMemStorage(storage);
 	CvSeq* contour = 0;
 	cvFindContours(imgCont, storage, &contour, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, cvPoint(0, 0));
 	cvZero(imgCont);
@@ -196,7 +198,6 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 			ymax = rec.y + rec.height;
 
 	}
-	cvClearMemStorage(storage);
 
 	//assert(contour_index < 256);
 
