@@ -30,7 +30,6 @@ struct histogram
 		for (int i = 1; i < 256; i++)
 		{
 			prob[i] = bin[i] + prob[i-1];
-			//cout << bin[i] << ",";
 		}
 		for (int i = 0; i < 256; i++)
 		{
@@ -40,7 +39,6 @@ struct histogram
 		for (int i = 0; i < 256; i++)
 		{
 			map[i] = prob[i] * 255;
-			//cout << i << " map to " << map[i] << endl;
 		}
 	}
 };
@@ -71,16 +69,15 @@ class FaceDetector
 		histogram hist;
 
     public:
-        const static string DEFAULT_CASCADE_PATH;// = "haarcascade_frontalface_alt.xml"; 
+        const static string DEFAULT_CASCADE_PATH; 
         const static int MIN_SIZE;
 
         FaceDetector(int w, int h, int fp, int fb, const char* cp = 0);
+		~FaceDetector();
         vector<Rect> detect(IplImage* img, IplImage* mask, CvRect ori);
         vector<Rect> detectAll(IplImage* img, CvRect* searched = 0);
         IplImage* getMask(IplImage* img);
 		CvRect analyze(IplImage* mask, int th, IplImage* src);
 };
-
-
 
 #endif

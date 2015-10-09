@@ -77,7 +77,6 @@ class IntImage
         int width;
         int height;
         int* data;
-        //const IplImage* origImg;
 };
 
 

@@ -60,14 +60,15 @@ int main(int argc, char** argv)
         cvNamedWindow("FaceDetect", CV_WINDOW_AUTOSIZE);
 
         IplImage* frame = 0;
+		IplImage* imgSmooth = 0;
         while(frame = cvQueryFrame(capture))
         {
             if(!fd)
             {
 				cout << "frame size:" << frame->width << " " << frame->height << endl;
                 fd = new FaceDetector(frame->width, frame->height, atoi(param["fps"].data()), atoi(param["fbuf"].data()));
+				imgSmooth = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
             }
-            IplImage* imgSmooth = cvCreateImage(cvSize(frame->width, frame->height), IPL_DEPTH_8U, 3);
 
 			clock_t start = clock();
             cvSmooth(frame, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
@@ -100,9 +101,6 @@ int main(int argc, char** argv)
                 cout << "save " << string(fname) << endl;
                 cvSaveImage(fname, imgSmooth);
             }
-
-
-            cvReleaseImage(&imgSmooth);
 
         }
 

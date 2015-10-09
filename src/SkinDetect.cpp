@@ -20,6 +20,15 @@ SkinDetector::SkinDetector(int w, int h)
     imgGra = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 1); //gray
 }
 
+SkinDetector::~SkinDetector()
+{
+	cvReleaseImage(&dst_img);
+	cvReleaseImage(&imgHSV);
+	cvReleaseImage(&imgHue);
+	cvReleaseImage(&imgSat);
+	cvReleaseImage(&imgGra);
+}
+
 IplImage* SkinDetector::detect(const IplImage* img, int val)
 {
     assert(img->width == width && img->height == height);

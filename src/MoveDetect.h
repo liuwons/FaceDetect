@@ -20,6 +20,7 @@ class FrameDiffMoveDetector : public MoveDetector
         int height;
     public:
         FrameDiffMoveDetector(int w, int h);
+		~FrameDiffMoveDetector();
 
         /* Detect movement using frame difference.
          * The input image is 1 channel gray image.
@@ -57,6 +58,7 @@ class BackgroundDiffMoveDetector : public MoveDetector
 
     public:
         BackgroundDiffMoveDetector(int w, int h, int fp, int fb, BackgroundMethod m = METHOD_MEDIUM);
+		~BackgroundDiffMoveDetector();
         IplImage* detect(const IplImage* img, int val = 1);
 };
 

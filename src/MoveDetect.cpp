@@ -20,6 +20,13 @@ FrameDiffMoveDetector::FrameDiffMoveDetector(int w, int h)
     index = 0;
 }
 
+FrameDiffMoveDetector::~FrameDiffMoveDetector()
+{
+	cvReleaseImage(&imgLast);
+	cvReleaseImage(&imgTmp);
+	cvReleaseImage(&imgMask);
+}
+
 /* Detect movement using frame difference.
  * The input image is 1 channel gray image.
  * The result is a mask image represents the region of movements.
@@ -90,6 +97,29 @@ BackgroundDiffMoveDetector::BackgroundDiffMoveDetector(int w, int h, int fp, int
         bp = new unsigned char*[imgBufLen];
     }
 
+}
+
+BackgroundDiffMoveDetector::~BackgroundDiffMoveDetector()
+{
+	cvReleaseImage(&imgBack);
+	cvReleaseImage(&imgMask);
+	cvReleaseImage(&imgTmp);
+
+	for (int i = 0; i < imgBufLen; i++)
+	{
+		cvReleaseImage(&imgBuf[i]);
+	}
+	delete[] imgBuf;
+
+	if (method == METHOD_AVERAGE)
+	{
+		delete[] cbuf;
+	}
+	else
+	{
+		delete[] ibuf;
+		delete[] bp;
+	}
 }
 
 int compare_uchar(const void* a, const void* b)

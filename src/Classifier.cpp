@@ -42,6 +42,10 @@ public:
 		y2 = min(range.end * stripSize + currentRect.y, currentRect.y + processingRectSize.height - classifier->data.origWinSize.height);
 
 
+        const IntImage* intImg = classifier->intImg;
+        int width = intImg->width;
+        int height = intImg->height;
+		int origX, origY, origX2, origY2;
         for( int y = y1; y < y2; y += yStep )
         {
             for( int x = x1; x < x2; x += yStep )
@@ -52,14 +56,10 @@ public:
 
                 if(opt)
                 {
-                    const IntImage* intImg = classifier->intImg;
-                    int width = intImg->width;
-                    int height = intImg->height;
-
-                    int origX = x * scalingFactor;
-                    int origY = y * scalingFactor;
-                    int origX2 = origX + winSize.width;
-                    int origY2 = origY + winSize.height;
+                    origX = x * scalingFactor;
+                    origY = y * scalingFactor;
+                    origX2 = origX + winSize.width;
+                    origY2 = origY + winSize.height;
 					if (origX2 > intImg->width || origY2 > intImg->height)
 						continue;
 

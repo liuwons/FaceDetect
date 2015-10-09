@@ -55,6 +55,24 @@ FaceDetector::FaceDetector(int w, int h, int fp, int fb, const char* cp)
     ii = new IntImage(w, h);
 }
 
+FaceDetector::~FaceDetector()
+{
+	for (int i = 0; i < imgBufLen; i++)
+	{
+		cvReleaseImage(&imgBuf[i]);
+	}
+	delete[] imgBuf;
+
+	cvReleaseImage(&imgMask);
+	cvReleaseImage(&imgGray);
+	cvReleaseImage(&imgBack);
+	cvReleaseImage(&imgCont);
+
+	delete md;
+	delete sd;
+	delete ii;
+}
+
 vector<Rect> FaceDetector::detectAll(IplImage* img, CvRect* searched)
 {
     IplImage* mask = getMask(img);
@@ -69,7 +87,7 @@ vector<Rect> FaceDetector::detectAll(IplImage* img, CvRect* searched)
 		ori = cvRect(0, 0, mask->width, mask->height);
 	}
 
-	cout << "region:" << ori.x << " " << ori.y << " " << ori.width << " " << ori.height << endl;
+	//cout << "region:" << ori.x << " " << ori.y << " " << ori.width << " " << ori.height << endl;
 	if (searched)
 	{
 		*searched = ori;
@@ -115,6 +133,7 @@ IplImage* FaceDetector::getMask(IplImage* img)
 
     IplImage* imgMaskMove = md->detect(imgGray, 1);
 
+	// Set rectangles of the last detected faces as ROI.
 	for (vector<Rect>::iterator iter = last_detected.begin(); iter < last_detected.end(); iter++)
 	{
 		unsigned char* p = (unsigned char*)imgMaskMove->imageData + iter->y * imgMaskMove->widthStep;
@@ -164,6 +183,7 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 
 		contour_index++;
 
+		// Fill all the contour regions on the temp mask.
 		cvDrawContours(imgCont, contour, cvScalar(contour_index, contour_index, contour_index), cvScalar(0, 0, 0), CV_FILLED, CV_FILLED);
 
 		if (rec.x < xmin)
@@ -176,6 +196,7 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 			ymax = rec.y + rec.height;
 
 	}
+	cvClearMemStorage(storage);
 
 	//assert(contour_index < 256);
 
@@ -218,15 +239,7 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 		pcon += imgCont->widthStep;
 	}
 
-	char fname1[256];
-	sprintf(fname1, "log/gray_after%d.bmp", index);
-	cvSaveImage(fname1, src);
-
-	
-	char fname[256];
-	sprintf(fname, "log/cont%d_%d.bmp", index, contour_index);
-	cvSaveImage(fname, imgCont);
-
+	// Get the mininal rectangle that contains all the contours.
 	if (xmax > xmin)
 	{
 		result = cvRect(xmin, ymin, xmax - xmin, ymax - ymin);
@@ -237,6 +250,15 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 	}
 
 	cout << "contour ana time:" << difftime(clock(), st) / CLOCKS_PER_SEC << endl;
+
+	char fname1[256];
+	sprintf(fname1, "log/gray_after%d.bmp", index);
+	cvSaveImage(fname1, src);
+
+
+	char fname[256];
+	sprintf(fname, "log/cont%d_%d.bmp", index, contour_index);
+	cvSaveImage(fname, imgCont);
 
 	return result;
 }
