@@ -1,1 +1,1 @@
-./face --debug --wframe --mode video --log log video/ctest.avi --fps 13 --fbuf 7 --classifier normal --opt_factor 6| tee run.log
+./face --debug --wframe --mode video --log log video/ctest.avi --fps 13 --fbuf 7 --classifier opt  --opt_factor 6| tee run.log

@@ -177,7 +177,7 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 
 	}
 
-	assert(contour_index < 256);
+	//assert(contour_index < 256);
 
 	char fname2[256];
 	sprintf(fname2, "log/gray_before%d.bmp", index);
