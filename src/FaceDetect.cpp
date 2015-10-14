@@ -201,43 +201,50 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 
 	//assert(contour_index < 256);
 
-	char fname2[256];
-	sprintf(fname2, "log/gray_before%d.bmp", index);
-	cvSaveImage(fname2, src);
-
-	unsigned char* psrc;
-	unsigned char* pcon;
-	hist.clear();
-	psrc = (unsigned char*)src->imageData;
-	pcon = (unsigned char*)imgCont->imageData;
-	for (int h = 0; h < src->height; h++)
+	if (param["save_image"] == "yes")
 	{
-		for (int w = 0; w < src->width; w++)
-		{
-			if (pcon[w] != 0)
-			{
-				hist.pix_count++;
-				hist.bin[psrc[w]] ++;
-			}
-		}
-		psrc += src->widthStep;
-		pcon += imgCont->widthStep;
+		char fname2[256];
+		sprintf(fname2, "log/gray_before%d.bmp", index);
+		cvSaveImage(fname2, src);
 	}
-	hist.normalize();
-	psrc = (unsigned char*)src->imageData;
-	pcon = (unsigned char*)imgCont->imageData;
-	for (int h = 0; h < src->height; h++)
+	
+
+	if (param["light_opt"] == "yes")
 	{
-		for (int w = 0; w < src->width; w++)
+		unsigned char* psrc;
+		unsigned char* pcon;
+		hist.clear();
+		psrc = (unsigned char*)src->imageData;
+		pcon = (unsigned char*)imgCont->imageData;
+		for (int h = 0; h < src->height; h++)
 		{
-			int id = pcon[w];
-			if (id != 0)
+			for (int w = 0; w < src->width; w++)
 			{
-				psrc[w] = hist.map[psrc[w]];
+				if (pcon[w] != 0)
+				{
+					hist.pix_count++;
+					hist.bin[psrc[w]] ++;
+				}
 			}
+			psrc += src->widthStep;
+			pcon += imgCont->widthStep;
 		}
-		psrc += src->widthStep;
-		pcon += imgCont->widthStep;
+		hist.normalize();
+		psrc = (unsigned char*)src->imageData;
+		pcon = (unsigned char*)imgCont->imageData;
+		for (int h = 0; h < src->height; h++)
+		{
+			for (int w = 0; w < src->width; w++)
+			{
+				int id = pcon[w];
+				if (id != 0)
+				{
+					psrc[w] = hist.map[psrc[w]];
+				}
+			}
+			psrc += src->widthStep;
+			pcon += imgCont->widthStep;
+		}
 	}
 
 	// Get the mininal rectangle that contains all the contours.
@@ -252,14 +259,16 @@ CvRect FaceDetector::analyze(IplImage* mask, int th, IplImage* src)
 
 	cout << "contour ana time:" << difftime(clock(), st) / CLOCKS_PER_SEC << endl;
 
-	char fname1[256];
-	sprintf(fname1, "log/gray_after%d.bmp", index);
-	cvSaveImage(fname1, src);
+	if (param["save_image"] == "yes")
+	{
+		char fname1[256];
+		sprintf(fname1, "log/gray_after%d.bmp", index);
+		cvSaveImage(fname1, src);
 
-
-	char fname[256];
-	sprintf(fname, "log/cont%d_%d.bmp", index, contour_index);
-	cvSaveImage(fname, imgCont);
+		char fname[256];
+		sprintf(fname, "log/cont%d_%d.bmp", index, contour_index);
+		cvSaveImage(fname, imgCont);
+	}
 
 	return result;
 }

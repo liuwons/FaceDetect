@@ -14,6 +14,8 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
     params["fbuf"] = "10";
     params["classfier"] = "normal";
     params["opt_factor"] = "3";
+	params["light_opt"] = "no";
+	params["save_image"] = "no";
 
     for(int i = 1; i < argc; i ++)
     {
@@ -71,6 +73,14 @@ bool parse_param(int argc, char** argv, map<string, string>& params)
             cout << "opt_factor:" << opt_factor << endl;
             i++;
         }
+		else if (!strcmp(argv[i], "--light_opt"))
+		{
+			params["light_opt"] = "yes";
+		}
+		else if (!strcmp(argv[i], "--save_image"))
+		{
+			params["save_image"] = "yes";
+		}
         else
         {
             params["file"] = argv[i];

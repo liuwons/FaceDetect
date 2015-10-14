@@ -94,7 +94,7 @@ int main(int argc, char** argv)
             
             fr_index ++;
 
-            if(param["debug"] == "yes")
+            if(param["save_image"] == "yes")
             {
                 char fname[256];
                 sprintf(fname, "%s/smooth%d.jpg", param["log"].data(), fr_index);
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
         IplImage* imgSmooth = cvCreateImage(cvSize(img->width, img->height), IPL_DEPTH_8U, 3);
         cvSmooth(img, imgSmooth, CV_GAUSSIAN, 3, 0, 0);
         
-        if(param["debug"] == "yes")
+        if(param["save_image"] == "yes")
         {
             cout << "save smooth.jpg" << endl;
             cvSaveImage("smooth.jpg", imgSmooth);
